@@ -64,11 +64,11 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('auth');
   const [cards, setCards] = useState([]);
-  const [typingHistory, setTypingHistory] = useState({});
+  const [typingHistory, setTypingHistory] = useState([]);
   const [allUsers, setAllUsers] = useState({});
   const [achievements, setAchievements] = useState([]);
   const [siteSettings, setSiteSettings] = useState({});
-  const [journalData, setJournalData] = useState({});
+  const [journalData, setJournalData] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [audioToPlay, setAudioToPlay] = useState(null);
@@ -76,11 +76,19 @@ export default function App() {
   const [notificationQueue, setNotificationQueue] = useState([]);
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
-  
+
   const fetchData = async () => {
-      setCards(await api.getCards());
-      setAchievements(await api.getAchievements());
-      setSiteSettings(await api.getSiteSettings());
+    try {
+        setCards(await api.getCards());
+        setAchievements(await api.getAchievements());
+        setSiteSettings(await api.getSiteSettings());
+        if (user && !user.isGuest) {
+            setTypingHistory(await api.getHistory(user.id));
+            setJournalData(await api.getJournal(user.id));
+        }
+    } catch (error) {
+        console.error("Failed to fetch data:", error);
+    }
   };
 
   useEffect(() => {
@@ -89,10 +97,6 @@ export default function App() {
 
   useEffect(() => {
     fetchData();
-    if(user && !user.isGuest) {
-        api.getHistory(user.id).then(setTypingHistory);
-        api.getJournal(user.id).then(setJournalData);
-    }
   }, [user]);
 
   useEffect(() => {
@@ -122,14 +126,10 @@ export default function App() {
     setView('auth');
     setSelectedCategory(null);
   };
-
+  
   const handleCardsChange = () => {
-    fetchData();
+      fetchData();
   };
-
-  const checkAndAwardAchievements = (stats) => {
-      // This function can be expanded later
-  }
 
   const handleComplete = (stats) => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
@@ -146,16 +146,16 @@ export default function App() {
     };
     api.saveHistory(newHistoryRecord).then(() => {
         api.getHistory(user.id).then(setTypingHistory);
-        checkAndAwardAchievements(stats);
+        // checkAndAwardAchievements(stats);
     });
   };
-
+  
   const renderGameView = () => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
     if (!card) return <div className="p-8 text-center">No cards in this category.</div>;
     
-    const userHistory = (typingHistory[user.email] || []).filter((h) => h.cardId === card.id);
+    const userHistory = typingHistory.filter((h) => h.card_id === card.id);
     const prevBest = userHistory.length > 0 ? userHistory.reduce((best, current) => (current.wpm > best.wpm ? current : best), { wpm: 0 }) : null;
 
     return (
@@ -181,17 +181,17 @@ export default function App() {
       case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={() => api.getUsers().then(setAllUsers)} achievements={achievements} onAchievementsChange={() => api.getAchievements().then(setAchievements)} siteSettings={siteSettings} onSiteSettingsChange={() => api.getSiteSettings().then(setSiteSettings)} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
-      case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntries) => { setJournalData(j => ({...j, [user.email]: updatedEntries})); updatedEntries.forEach(api.saveJournalEntry); }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
+      case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
       case 'card_select': 
-        const categoryCards = cards.filter(c => user.isAdmin || (user.assigned_categories && user.assigned_categories.includes(c.category)));
-        if(categoryCards.length === 0 && !user.isAdmin) {
+        const categoryCards = cards.filter(c => user.is_admin || (user.assigned_categories && user.assigned_categories.includes(c.category)));
+        if(categoryCards.length === 0 && !user.is_admin) {
             return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
         }
         return (<div className="p-8"><h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{categoryCards.map((card, index) => (<div key={card.id} onClick={() => {setCurrentCardIndex(index); setView('game')}} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1"><h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3><p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p></div>))}</div><button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button></div>);
       case 'category_select':
         const allCategories = [...new Set(cards.map(c => c.category || 'Uncategorized'))];
-        const visibleCategories = user.isAdmin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
-        if(visibleCategories.length === 0 && !user.isAdmin) {
+        const visibleCategories = user.is_admin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
+        if(visibleCategories.length === 0 && !user.is_admin) {
             return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
         }
         return (<div className="p-8"><h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Choose a Category</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{visibleCategories.map(category => (<div key={category} onClick={() => {setSelectedCategory(category); setView('card_select')}} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1 flex justify-between items-center"><h3 className="text-xl font-bold text-gray-900 dark:text-white">{category}</h3><ChevronsRight className="text-yellow-400"/></div>))}</div></div>);
@@ -206,7 +206,7 @@ export default function App() {
       <div className="fixed top-5 right-5 z-50 space-y-2">
         {notificationQueue.map((note, index) => (
             <div key={note.id} className="bg-yellow-400 text-gray-900 p-4 rounded-lg shadow-lg animate-fade-in-up flex items-center gap-4" style={{animationDelay: `${index * 100}ms`}}>
-                <div>{note.iconType === 'emoji' ? <span className="text-4xl">{note.icon}</span> : <img src={note.icon} alt={note.title} className="w-12 h-12"/>}</div>
+                <div>{note.icon_type === 'emoji' ? <span className="text-4xl">{note.icon}</span> : <img src={note.icon} alt={note.title} className="w-12 h-12"/>}</div>
                 <div><h4 className="font-bold">Achievement Unlocked!</h4><p>{note.title}</p></div>
             </div>
         ))}
@@ -214,12 +214,12 @@ export default function App() {
       {user && <header className="p-4 flex justify-between items-center bg-gray-100 dark:bg-gray-800">
         <div className="flex items-center gap-4">
             <Tooltip text="Home"><button onClick={() => setView('category_select')} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><Home size={24} className="text-yellow-400"/></button></Tooltip>
-            <h1 className="text-xl font-bold text-yellow-400">{siteSettings.siteName}</h1>
+            <h1 className="text-xl font-bold text-yellow-400">{siteSettings.site_name}</h1>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           {!user.isGuest && (<Tooltip text="My Journal"><button onClick={() => setView('journal')} className={`p-2 rounded-full ${view === 'journal' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><BookOpen size={20} /></button></Tooltip>)}
           {!user.isGuest && (<Tooltip text="My Profile"><button onClick={() => setView('profile')} className={`p-2 rounded-full ${view === 'profile' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><UserIcon size={20} /></button></Tooltip>)}
-          {user.isAdmin && (<Tooltip text="Admin Panel"><button onClick={() => setView('admin')} className={`p-2 rounded-full ${view === 'admin' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Database size={20} /></button></Tooltip>)}
+          {user.is_admin && (<Tooltip text="Admin Panel"><button onClick={() => setView('admin')} className={`p-2 rounded-full ${view === 'admin' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Database size={20} /></button></Tooltip>)}
           <Tooltip text={settings.showKeyboard ? 'Hide Keyboard' : 'Show Keyboard'}><button onClick={() => setSettings(s => ({...s, showKeyboard: !s.showKeyboard}))} className={`p-2 rounded-full ${settings.showKeyboard ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Keyboard size={20} /></button></Tooltip>
           <Tooltip text={settings.soundEnabled ? 'Disable Sound' : 'Enable Sound'}><button onClick={() => setSettings(s => ({...s, soundEnabled: !s.soundEnabled}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}</button></Tooltip>
           <Tooltip text={settings.isDarkMode ? 'Light Mode' : 'Dark Mode'}><button onClick={() => setSettings(s => ({...s, isDarkMode: !s.isDarkMode}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</button></Tooltip>

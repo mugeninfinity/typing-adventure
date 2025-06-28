@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const CompletionFeedback = ({ stats, prevBest, user, wordCount }) => {
     const getFeedback = () => {
-        if (user.isGuest) return { emoji: '🎉', message: `Great job, Guest!`, advice: 'Log in to save your progress and get personalized feedback.'};
-        if (!prevBest) return { emoji: '🙂', message: `Nice one, ${user.name}! You've set your first score.`, advice: 'Try it again to see if you can beat your new record!' };
+        if (user.isGuest) return { emoji: '??', message: `Great job, Guest!`, advice: 'Log in to save your progress and get personalized feedback.'};
+        if (!prevBest) return { emoji: '??', message: `Nice one, ${user.name}! You've set your first score.`, advice: 'Try it again to see if you can beat your new record!' };
         const wpmChange = stats.wpm - prevBest.wpm;
-        if (wpmChange > 5 && stats.accuracy >= 95) return { emoji: '🚀', message: `Incredible speed, ${user.name}!`, advice: 'You smashed your previous record. Amazing job!' };
-        if (wpmChange > 0) return { emoji: '👍', message: `Faster than before, ${user.name}!`, advice: `You improved your WPM. Keep up the great work!` };
-        if (stats.accuracy > prevBest.accuracy && stats.accuracy > 97) return { emoji: '🎯', message: `Perfect precision, ${user.name}!`, advice: 'Your accuracy is superb. Now try to increase your speed.' };
-        if (stats.accuracy < 90) return { emoji: '🧐', message: `Good effort, ${user.name}!`, advice: 'Try to slow down just a bit to focus on hitting the right keys.' };
-        return { emoji: '🤔', message: `So close, ${user.name}!`, advice: 'You were very close to your previous score. You can beat it next time!' };
+        if (wpmChange > 5 && stats.accuracy >= 95) return { emoji: '??', message: `Incredible speed, ${user.name}!`, advice: 'You smashed your previous record. Amazing job!' };
+        if (wpmChange > 0) return { emoji: '??', message: `Faster than before, ${user.name}!`, advice: `You improved your WPM. Keep up the great work!` };
+        if (stats.accuracy > prevBest.accuracy && stats.accuracy > 97) return { emoji: '??', message: `Perfect precision, ${user.name}!`, advice: 'Your accuracy is superb. Now try to increase your speed.' };
+        if (stats.accuracy < 90) return { emoji: '??', message: `Good effort, ${user.name}!`, advice: 'Try to slow down just a bit to focus on hitting the right keys.' };
+        return { emoji: '??', message: `So close, ${user.name}!`, advice: 'You were very close to your previous score. You can beat it next time!' };
     };
     const { emoji, message, advice } = getFeedback();
     const uniqueIncorrect = [...new Set(stats.incorrectLetters)];
@@ -51,7 +51,7 @@ export default function TypingTest({ card, onComplete, onSkip, onDirectEdit, set
   const audioCorrectRef = useRef(null);
   const audioIncorrectRef = useRef(null);
   const inputRef = useRef(null);
-  const textToType = card.textContent;
+  const textToType = card.text_content;
   const wordCount = textToType.split(' ').length;
   const [lastTypedKey, setLastTypedKey] = useState('');
   const [isMistake, setIsMistake] = useState(false);
@@ -101,15 +101,15 @@ export default function TypingTest({ card, onComplete, onSkip, onDirectEdit, set
     }
   };
 
-  const nextChar = isFinished ? '🎉' : textToType[inputValue.length] || '';
+  const nextChar = isFinished ? '??' : textToType[inputValue.length] || '';
   
   const words = textToType.split(' ');
   const typedWords = inputValue.split(' ');
   const currentWordIndex = typedWords.length - 1;
   const mediaReveal = card.image || card.video;
 
-  return (<div className="w-full max-w-4xl mx-auto p-4 md:p-8" onClick={() => inputRef.current && inputRef.current.focus()}><audio ref={audioCorrectRef} src={siteSettings.correctSound} preload="auto"></audio><audio ref={audioIncorrectRef} src={siteSettings.incorrectSound} preload="auto"></audio>
-    {mediaReveal && (<div className="p-4 md:p-8 flex justify-center items-center cursor-pointer" onClick={onSkip}><div className="transition-opacity duration-500" style={{opacity: progress / 100}}>{card.revealType === 'puzzle' && card.image && <PuzzleReveal imageSrc={card.image} progress={progress} textLength={card.textContent.length} />}{(card.revealType === 'image' || (card.revealType !== 'puzzle' && card.image)) && <img src={card.image} alt={card.title} className="max-w-full max-h-[450px] rounded-lg shadow-2xl"/>}{card.video && <video src={card.video} autoPlay muted loop className="max-w-full max-h-[450px] rounded-lg shadow-2xl"></video>}</div></div>)}
+  return (<div className="w-full max-w-4xl mx-auto p-4 md:p-8" onClick={() => inputRef.current && inputRef.current.focus()}><audio ref={audioCorrectRef} src={siteSettings.correct_sound} preload="auto"></audio><audio ref={audioIncorrectRef} src={siteSettings.incorrect_sound} preload="auto"></audio>
+    {mediaReveal && (<div className="p-4 md:p-8 flex justify-center items-center cursor-pointer" onClick={onSkip}><div className="transition-opacity duration-500" style={{opacity: progress / 100}}>{card.reveal_type === 'puzzle' && card.image && <PuzzleReveal imageSrc={card.image} progress={progress} textLength={card.text_content.length} />}{(card.reveal_type === 'image' || (card.reveal_type !== 'puzzle' && card.image)) && <img src={card.image} alt={card.title} className="max-w-full max-h-[450px] rounded-lg shadow-2xl"/>}{card.video && <video src={card.video} autoPlay muted loop className="max-w-full max-h-[450px] rounded-lg shadow-2xl"></video>}</div></div>)}
     <div className="mb-4 text-center"><p className="text-gray-500 dark:text-gray-400 text-sm">NEXT KEY</p><div className={`mx-auto mt-1 w-auto px-4 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg flex items-center justify-center transition-all border-4 ${isMistake ? 'border-red-500' : 'border-transparent'}`}><span className={`font-mono text-4xl font-bold text-gray-800 dark:text-gray-200`}>{isMistake ? 'Backspace' : (nextChar === ' ' ? 'Space' : nextChar)}</span></div></div>
     <div className="relative text-2xl md:text-3xl leading-relaxed bg-gray-200 dark:bg-gray-800 p-6 rounded-lg font-mono tracking-wider"><p className="select-none">{words.map((word, wordIndex) => (<React.Fragment key={wordIndex}><span className="word">{word.split('').map((char, charIndexInWord) => {
         const absoluteCharIndex = words.slice(0, wordIndex).join(' ').length + (wordIndex > 0 ? 1 : 0) + charIndexInWord;

@@ -9,7 +9,7 @@ const JournalEditor = ({ entry, onSave, onClose }) => {
         const plainText = editorRef.current.innerText || '';
         const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
         const charCount = plainText.length;
-        onSave({...entry, content: editorRef.current.innerHTML, wordCount, charCount });
+        onSave({...entry, content: editorRef.current.innerHTML, word_count: wordCount, char_count: charCount });
     };
 
     const handleFormat = (command) => { 
@@ -36,19 +36,11 @@ const JournalEditor = ({ entry, onSave, onClose }) => {
 };
 
 export default function JournalPage({ user, journal, onJournalChange, onDeleteEntry }) {
-    const userJournal = journal[user.email] || [];
     const [editingEntry, setEditingEntry] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
 
     const handleSaveJournal = (entry) => {
-        let updatedJournal;
-        const existing = userJournal.find(j => j.id === entry.id);
-        if (existing) {
-            updatedJournal = userJournal.map(j => j.id === entry.id ? entry : j);
-        } else {
-            updatedJournal = [...userJournal, entry];
-        }
-        onJournalChange(user.email, updatedJournal);
+        onJournalChange(entry);
         setEditingEntry(null);
     };
     
@@ -59,7 +51,7 @@ export default function JournalPage({ user, journal, onJournalChange, onDeleteEn
 
     const confirmDelete = () => {
         if (confirmingDelete) {
-            onDeleteEntry(user.email, confirmingDelete.id);
+            onDeleteEntry(confirmingDelete.id);
             setConfirmingDelete(null);
         }
     };
@@ -68,12 +60,12 @@ export default function JournalPage({ user, journal, onJournalChange, onDeleteEn
         <div className="p-8">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold text-yellow-400">My Journal</h2>
-                <button onClick={() => setEditingEntry({id: Date.now(), timestamp: Date.now(), content: '', wordCount: 0, charCount: 0})} className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 font-bold rounded-md hover:bg-yellow-500">
+                <button onClick={() => setEditingEntry({id: null, content: '', word_count: 0, char_count: 0, user_id: user.id})} className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 font-bold rounded-md hover:bg-yellow-500">
                     <Edit size={16}/> New Entry
                 </button>
             </div>
             <div className="space-y-4">
-                {userJournal.sort((a,b) => b.timestamp - a.timestamp).map(entry => {
+                {journal.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).map(entry => {
                     const plainText = (entry.content || '').replace(/<[^>]+>/g, '');
                     const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
                     const charCount = plainText.length;
