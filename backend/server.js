@@ -223,13 +223,6 @@ app.get('/api/site-settings', async (req, res) => {
     }
 });
 
-
-app.listen(port, () => {
-  console.log(`Backend server listening on port ${port}`);
-});
-
-//... (keep all existing code)
-
 // UPDATE USER SETTINGS
 app.put('/api/users/:id/settings', async (req, res) => {
     const { id } = req.params;
@@ -244,7 +237,7 @@ app.put('/api/users/:id/settings', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
         res.json({ success: true, settings: result.rows[0].settings });
-    } catch (err) => {
+    } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
     }
