@@ -63,6 +63,21 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
+app.post('/api/users', async (req, res) => {
+    const { email, password, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    try {
+        const result = await pool.query(
+            'INSERT INTO users (email, password, name, is_admin, unlocked_achievements, assigned_categories) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [email, hashedPassword, name, is_admin, unlocked_achievements, assigned_categories]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const { email, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
@@ -78,6 +93,16 @@ app.put('/api/users/:id', async (req, res) => {
     }
 });
 
+app.delete('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 // CARDS
 app.get('/api/cards', async (req, res) => {
