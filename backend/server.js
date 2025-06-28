@@ -410,3 +410,58 @@ app.delete('/api/mon-types/:id', async (req, res) => {
 
 
 // ... (the rest of your server.js file)
+// ... (keep all existing code up to the end of the mon-types routes)
+
+// QUESTS
+app.get('/api/quests', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM quests ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/quests', async (req, res) => {
+    const { title, description, type, goal, reward_money, reward_xp_multiplier } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO quests (title, description, type, goal, reward_money, reward_xp_multiplier) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [title, description, type, goal, reward_money, reward_xp_multiplier]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/quests/:id', async (req, res) => {
+    const { id } = req.params;
+    const { title, description, type, goal, reward_money, reward_xp_multiplier } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE quests SET title = $1, description = $2, type = $3, goal = $4, reward_money = $5, reward_xp_multiplier = $6 WHERE id = $7 RETURNING *',
+            [title, description, type, goal, reward_money, reward_xp_multiplier, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/quests/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM quests WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// ... (the rest of your server.js file)
