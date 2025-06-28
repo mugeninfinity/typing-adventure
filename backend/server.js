@@ -545,3 +545,127 @@ app.put('/api/user-rewards/:id', async (req, res) => {
 
 
 // ... (the rest of your server.js file)
+
+// ... (keep all existing code up to the end of the cards routes)
+
+// USERS
+app.post('/api/auth/login', async (req, res) => {
+    // ... (login code remains the same)
+});
+
+app.get('/api/users', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/users', async (req, res) => {
+    const { email, password, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    try {
+        const result = await pool.query(
+            'INSERT INTO users (email, password, name, is_admin, unlocked_achievements, assigned_categories) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [email, hashedPassword, name, is_admin, unlocked_achievements, assigned_categories]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { email, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE users SET email = $1, name = $2, is_admin = $3, unlocked_achievements = $4, assigned_categories = $5 WHERE id = $6 RETURNING *',
+            [email, name, is_admin, unlocked_achievements, assigned_categories, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ... (the rest of your server.js file)
+
+// ... (keep all existing code up to the end of the mon-types routes)
+
+// USER'S MONS
+app.get('/api/users/:id/mons', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query(
+            'SELECT m.id, m.level, m.experience, mt.name, mt.image_url, mt.evolution_stage, mt.evolves_at_level FROM mons m JOIN mon_types mt ON m.mon_type_id = mt.id WHERE m.user_id = $1 ORDER BY m.id ASC',
+            [id]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ... (the rest of your server.js file)
+// ... (keep all existing code up to the end of the rewards routes)
+
+// USER QUESTS
+app.get('/api/users/:id/quests', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('SELECT uq.*, q.title, q.description, q.type, q.goal, q.reward_money, q.reward_xp_multiplier FROM user_quests uq JOIN quests q ON uq.quest_id = q.id WHERE uq.user_id = $1', [id]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/user-quests', async (req, res) => {
+    const { user_id, quest_id } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO user_quests (user_id, quest_id) VALUES ($1, $2) RETURNING *',
+            [user_id, quest_id]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// USER REWARDS
+app.post('/api/user-rewards', async (req, res) => {
+    const { user_id, reward_id } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO user_rewards (user_id, reward_id) VALUES ($1, $2) RETURNING *',
+            [user_id, reward_id]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// ... (the rest of your server.js file)
