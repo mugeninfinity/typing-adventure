@@ -16,83 +16,17 @@ const pool = new Pool({
   port: process.env.POSTGRES_PORT,
 });
 
-// --- DATABASE INITIALIZATION ---
-async function initializeDatabase() {
-  const client = await pool.connect();
-  try {
-    // Create users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        name VARCHAR(255),
-        isAdmin BOOLEAN DEFAULT false,
-        unlockedAchievements TEXT[] DEFAULT '{}',
-        assignedCategories TEXT[] DEFAULT '{}'
-      );
-    `);
-
-    // Create cards table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS cards (
-        id SERIAL PRIMARY KEY,
-        category VARCHAR(255),
-        title VARCHAR(255),
-        textContent TEXT,
-        image VARCHAR(255),
-        video VARCHAR(255),
-        audio VARCHAR(255),
-        revealType VARCHAR(50)
-      );
-    `);
-
-    // Check if the users table is empty and seed it
-    const userRes = await client.query('SELECT COUNT(*) FROM users');
-    if (userRes.rows[0].count === '0') {
-        console.log('Users table is empty. Seeding with initial data...');
-        const usersToSeed = {
-            'user@example.com': { password: 'password123', isAdmin: false, name: 'User', assignedCategories: ['Science'] },
-            'admin@example.com': { password: 'admin123', isAdmin: true, name: 'Admin', assignedCategories: [] },
-        };
-
-        for (const email in usersToSeed) {
-            const user = usersToSeed[email];
-            const hashedPassword = await bcrypt.hash(user.password, saltRounds);
-            await client.query(
-                'INSERT INTO users (email, password, name, isAdmin, assignedCategories) VALUES ($1, $2, $3, $4, $5)',
-                [email, hashedPassword, user.name, user.isAdmin, user.assignedCategories]
-            );
-        }
-        console.log('Initial user data seeded.');
-    }
-
-    console.log('Database initialized successfully.');
-  } catch (err) {
-    console.error('Error initializing database', err.stack);
-  } finally {
-    client.release();
-  }
-}
-
-initializeDatabase().catch(console.error);
-
-
 // --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 
-
 // --- API ROUTES ---
 
-// Real Login Endpoint
+// USERS
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        const client = await pool.connect();
-        const result = await client.query('SELECT * FROM users WHERE email = $1 OR name = $1', [identifier]);
-        client.release();
-
+        const result = await pool.query('SELECT * FROM users WHERE email = $1 OR name = $1', [identifier]);
         if (result.rows.length === 0) {
             return res.status(401).json({ success: false, message: 'Invalid credentials.' });
         }
@@ -105,9 +39,9 @@ app.post('/api/auth/login', async (req, res) => {
                 id: dbUser.id,
                 email: dbUser.email,
                 name: dbUser.name,
-                isAdmin: dbUser.isadmin,
-                unlockedAchievements: dbUser.unlockedachievements,
-                assignedCategories: dbUser.assignedcategories,
+                isAdmin: dbUser.is_admin,
+                unlockedAchievements: dbUser.unlocked_achievements,
+                assignedCategories: dbUser.assigned_categories,
             };
             res.json({ success: true, user: userPayload });
         } else {
@@ -119,12 +53,9 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// GET all cards
-app.get('/api/cards', async (req, res) => {
+app.get('/api/users', async (req, res) => {
     try {
-        const client = await pool.connect();
-        const result = await client.query('SELECT * FROM cards ORDER BY id ASC');
-        client.release();
+        const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users');
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -132,19 +63,160 @@ app.get('/api/cards', async (req, res) => {
     }
 });
 
-// NEW: DELETE a card by ID
-app.delete('/api/cards/:id', async (req, res) => {
-    const { id } = req.params;
+// CARDS
+app.get('/api/cards', async (req, res) => {
     try {
-        const client = await pool.connect();
-        const result = await client.query('DELETE FROM cards WHERE id = $1 RETURNING *', [id]);
-        client.release();
+        const result = await pool.query('SELECT * FROM cards ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
+app.post('/api/cards', async (req, res) => {
+    const { category, title, text_content, image, video, audio, reveal_type } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO cards (category, title, text_content, image, video, audio, reveal_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [category, title, text_content, image, video, audio, reveal_type]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/cards/:id', async (req, res) => {
+    const { id } = req.params;
+    const { category, title, text_content, image, video, audio, reveal_type } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE cards SET category = $1, title = $2, text_content = $3, image = $4, video = $5, audio = $6, reveal_type = $7 WHERE id = $8 RETURNING *',
+            [category, title, text_content, image, video, audio, reveal_type, id]
+        );
         if (result.rowCount === 0) {
             return res.status(404).json({ success: false, message: 'Card not found' });
         }
-        
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/cards/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM cards WHERE id = $1 RETURNING *', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'Card not found' });
+        }
         res.json({ success: true, message: 'Card deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// TYPING HISTORY
+app.get('/api/history/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM typing_history WHERE user_id = $1', [userId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/history', async (req, res) => {
+    const { userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO typing_history (user_id, card_id, wpm, accuracy, time_elapsed, incorrect_letters, word_count, char_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// ACHIEVEMENTS
+app.get('/api/achievements', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM achievements');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// JOURNAL
+app.get('/api/journal/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM journal WHERE user_id = $1', [userId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/journal', async (req, res) => {
+    const { userId, content, wordCount, charCount } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO journal (user_id, content, word_count, char_count) VALUES ($1, $2, $3, $4) RETURNING *',
+            [userId, content, wordCount, charCount]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/journal/:id', async (req, res) => {
+    const { id } = req.params;
+    const { content, wordCount, charCount } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE journal SET content = $1, word_count = $2, char_count = $3 WHERE id = $4 RETURNING *',
+            [content, wordCount, charCount, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/journal/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM journal WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// SITE SETTINGS
+app.get('/api/site-settings', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM site_settings LIMIT 1');
+        res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
