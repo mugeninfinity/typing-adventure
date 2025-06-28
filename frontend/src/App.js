@@ -125,10 +125,12 @@ export default function App() {
     }
   }, [notificationQueue]);
 
-  const handleLogin = (loggedInUser) => {
-    localStorage.setItem('user', JSON.stringify(loggedInUser));
-    setUser(loggedInUser);
-    setView('category_select');
+  const handleLogin = (data) => {
+    if (data.success) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setUser(data.user);
+        setView('category_select');
+    }
   };
 
   const handleLogout = () => {
