@@ -63,6 +63,22 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { email, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE users SET email = $1, name = $2, is_admin = $3, unlocked_achievements = $4, assigned_categories = $5 WHERE id = $6 RETURNING *',
+            [email, name, is_admin, unlocked_achievements, assigned_categories, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 // CARDS
 app.get('/api/cards', async (req, res) => {
     try {
@@ -159,6 +175,24 @@ app.get('/api/achievements', async (req, res) => {
     }
 });
 
+app.post('/api/achievements', async (req, res) => {
+    const achievements = req.body;
+    try {
+        await pool.query('DELETE FROM achievements');
+        const result = await Promise.all(achievements.map(ach => {
+            return pool.query(
+                'INSERT INTO achievements (id, title, description, icon, icon_type, type, value) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+                [ach.id, ach.title, ach.description, ach.icon, ach.icon_type, ach.type, ach.value]
+            );
+        }));
+        res.status(201).json(result.map(r => r.rows[0]));
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 // JOURNAL
 app.get('/api/journal/:userId', async (req, res) => {
     const { userId } = req.params;
@@ -216,6 +250,20 @@ app.delete('/api/journal/:id', async (req, res) => {
 app.get('/api/site-settings', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM site_settings LIMIT 1');
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/site-settings', async (req, res) => {
+    const { site_name, correct_sound, incorrect_sound } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE site_settings SET site_name = $1, correct_sound = $2, incorrect_sound = $3 RETURNING *',
+            [site_name, correct_sound, incorrect_sound]
+        );
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
