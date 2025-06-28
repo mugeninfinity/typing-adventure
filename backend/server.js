@@ -465,3 +465,83 @@ app.delete('/api/quests/:id', async (req, res) => {
 
 
 // ... (the rest of your server.js file)
+// ... (keep all existing code up to the end of the quests routes)
+
+// REWARDS
+app.get('/api/rewards', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM rewards ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/rewards', async (req, res) => {
+    const { name, description, cost } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO rewards (name, description, cost) VALUES ($1, $2, $3) RETURNING *',
+            [name, description, cost]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/rewards/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, description, cost } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE rewards SET name = $1, description = $2, cost = $3 WHERE id = $4 RETURNING *',
+            [name, description, cost, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/rewards/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM rewards WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/user-rewards', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT user_rewards.*, users.name as user_name, rewards.name as reward_name FROM user_rewards JOIN users ON user_rewards.user_id = users.id JOIN rewards ON user_rewards.reward_id = rewards.id ORDER BY requested_at DESC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/user-rewards/:id', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE user_rewards SET status = $1 WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+// ... (the rest of your server.js file)
