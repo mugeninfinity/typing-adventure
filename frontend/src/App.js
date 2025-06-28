@@ -77,6 +77,15 @@ export default function App() {
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
+  useEffect(() => {
+      const loggedInUser = localStorage.getItem("user");
+      if (loggedInUser) {
+          const foundUser = JSON.parse(loggedInUser);
+          setUser(foundUser);
+          setView('category_select');
+      }
+  }, []);
+
   const fetchData = async () => {
     try {
         setCards(await api.getCards());
@@ -117,11 +126,13 @@ export default function App() {
   }, [notificationQueue]);
 
   const handleLogin = (loggedInUser) => {
+    localStorage.setItem('user', JSON.stringify(loggedInUser));
     setUser(loggedInUser);
     setView('category_select');
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('user');
     setUser(null);
     setView('auth');
     setSelectedCategory(null);

@@ -51,7 +51,7 @@ export default function TypingTest({ card, onComplete, onSkip, onDirectEdit, set
   const audioCorrectRef = useRef(null);
   const audioIncorrectRef = useRef(null);
   const inputRef = useRef(null);
-  const textToType = card.text_content;
+  const textToType = card.text_content || '';
   const wordCount = textToType.split(' ').length;
   const [lastTypedKey, setLastTypedKey] = useState('');
   const [isMistake, setIsMistake] = useState(false);
