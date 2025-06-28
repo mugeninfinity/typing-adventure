@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS users (
     is_admin BOOLEAN DEFAULT false,
     unlocked_achievements TEXT[] DEFAULT '{}',
     assigned_categories TEXT[] DEFAULT '{}',
-    settings JSONB DEFAULT '{}'  --  NEW COLUMN
+    settings JSONB DEFAULT '{}',
+    money INTEGER DEFAULT 0,
+    trainer_level INTEGER DEFAULT 1,
+    trainer_experience INTEGER DEFAULT 0
 );
 
 -- Cards Table
@@ -65,6 +68,62 @@ CREATE TABLE IF NOT EXISTS site_settings (
     incorrect_sound VARCHAR(255)
 );
 
+-- Mon Types Table
+CREATE TABLE IF NOT EXISTS mon_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    image_url VARCHAR(255),
+    evolution_stage VARCHAR(50) NOT NULL,
+    evolves_at_level INTEGER
+);
+
+-- Mons Table
+CREATE TABLE IF NOT EXISTS mons (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    mon_type_id INTEGER REFERENCES mon_types(id) ON DELETE CASCADE,
+    level INTEGER DEFAULT 1,
+    experience INTEGER DEFAULT 0
+);
+
+-- Quests Table
+CREATE TABLE IF NOT EXISTS quests (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    description TEXT,
+    type VARCHAR(255),
+    goal INTEGER,
+    reward_money INTEGER,
+    reward_xp_multiplier NUMERIC(3, 1)
+);
+
+-- User Quests Table
+CREATE TABLE IF NOT EXISTS user_quests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    quest_id INTEGER REFERENCES quests(id) ON DELETE CASCADE,
+    progress INTEGER DEFAULT 0,
+    is_completed BOOLEAN DEFAULT false,
+    assigned_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Rewards Table
+CREATE TABLE IF NOT EXISTS rewards (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    description TEXT,
+    cost INTEGER
+);
+
+-- User Rewards Table
+CREATE TABLE IF NOT EXISTS user_rewards (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    reward_id INTEGER REFERENCES rewards(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, approved, denied, redeemed
+    requested_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 
 -- Seed initial data
 INSERT INTO
@@ -78,14 +137,14 @@ INSERT INTO
 VALUES
     (
         'user@example.com',
-        '$2b$10$UbiwRedMqHWqtuUZdXKhX.UNUIZh1NhKgnmPmDfkI81DJYfbPvH1K',
+        '$2b$10$sZUb4q3.Yy7FZF2LdII6cOMir6rh1eyWqwjKI.GFsP4miHJjoQUku',
         'User',
         false,
         '{"Science"}'
     ),
     (
         'admin@example.com',
-        '$2b$10$DCvVhyxbzohlJPkgaKHrs.mNyo9zFXgHFvg18jkjJpIdDzFpr93fG',
+        '$2b$10$LziSX2vG6D2mJfjQQo0XUOhsulWxLSeg6mkvxDh9HHixB5o1Znsyq',
         'Admin',
         true,
         '{}'
