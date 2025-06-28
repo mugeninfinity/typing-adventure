@@ -244,7 +244,7 @@ app.put('/api/users/:id/settings', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
         res.json({ success: true, settings: result.rows[0].settings });
-    } catch (err) {
+    } catch (err) => {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
     }

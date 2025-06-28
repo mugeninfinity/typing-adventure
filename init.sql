@@ -1,4 +1,4 @@
--- Users Table
+-- Users Table (Updated)
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(255),
     is_admin BOOLEAN DEFAULT false,
     unlocked_achievements TEXT[] DEFAULT '{}',
-    assigned_categories TEXT[] DEFAULT '{}'
+    assigned_categories TEXT[] DEFAULT '{}',
+    settings JSONB DEFAULT '{}'  --  NEW COLUMN
 );
 
 -- Cards Table
@@ -62,17 +63,6 @@ CREATE TABLE IF NOT EXISTS site_settings (
     site_name VARCHAR(255),
     correct_sound VARCHAR(255),
     incorrect_sound VARCHAR(255)
-);
-
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    name VARCHAR(255),
-    is_admin BOOLEAN DEFAULT false,
-    unlocked_achievements TEXT[] DEFAULT '{}',
-    assigned_categories TEXT[] DEFAULT '{}',
-    settings JSONB DEFAULT '{}'  --  NEW COLUMN
 );
 
 

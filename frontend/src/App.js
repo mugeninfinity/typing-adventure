@@ -74,11 +74,11 @@ const api = {
     return response.json();
   },
   saveUserSettings: async (userId, settings) => {
-    const response = await fetch(`/api/users/${userId}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings }),
-    });
+      const response = await fetch(`/api/users/${userId}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      });
     return response.json();
   },
 };
@@ -131,6 +131,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.isDarkMode);
     if (user && !user.isGuest) {
+      // Debounce this in a real app to avoid too many API calls
       api.saveUserSettings(user.id, settings);
     }
   }, [settings, user]);
@@ -282,10 +283,9 @@ export default function App() {
           {!user.isGuest && (<Tooltip text="My Journal"><button onClick={() => setView('journal')} className={`p-2 rounded-full ${view === 'journal' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><BookOpen size={20} /></button></Tooltip>)}
           {!user.isGuest && (<Tooltip text="My Profile"><button onClick={() => setView('profile')} className={`p-2 rounded-full ${view === 'profile' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><UserIcon size={20} /></button></Tooltip>)}
           {user.isAdmin && (<Tooltip text="Admin Panel"><button onClick={() => setView('admin')} className={`p-2 rounded-full ${view === 'admin' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Database size={20} /></button></Tooltip>)}
-          <Tooltip text={settings.showKeyboard ? 'Hide Keyboard' : 'Show Keyboard'}><button onClick={() => setSettings(s => ({...s, showKeyboard: !s.showKeyboard}))} className={`p-2 rounded-full ${settings.showKeyboard ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Keyboard size={20} /></button></Tooltip>
-          <Tooltip text={settings.soundEnabled ? 'Disable Sound' : 'Enable Sound'}><button onClick={() => setSettings(s => ({...s, soundEnabled: !s.soundEnabled}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}</button></Tooltip>
-          <Tooltip text={settings.isDarkMode ? 'Light Mode' : 'Dark Mode'}><button onClick={() => setSettings(s => ({...s, isDarkMode: !s.isDarkMode}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</button></Tooltip>
-          <div className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:block">{user.name}<button onClick={handleLogout} className="ml-2 hover:underline">(Logout)</button></div>
+            <Tooltip text={settings.showKeyboard ? 'Hide Keyboard' : 'Show Keyboard'}><button onClick={() => setSettings(s => ({...s, showKeyboard: !s.showKeyboard}))} className={`p-2 rounded-full ${settings.showKeyboard ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Keyboard size={20} /></button></Tooltip>
+  <Tooltip text={settings.soundEnabled ? 'Disable Sound' : 'Enable Sound'}><button onClick={() => setSettings(s => ({...s, soundEnabled: !s.soundEnabled}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}</button></Tooltip>
+  <Tooltip text={settings.isDarkMode ? 'Light Mode' : 'Dark Mode'}><button onClick={() => setSettings(s => ({...s, isDarkMode: !s.isDarkMode}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</button></Tooltip>          <div className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:block">{user.name}<button onClick={handleLogout} className="ml-2 hover:underline">(Logout)</button></div>
         </div>
       </header>}
       <div className="container mx-auto">{renderView()}</div>
