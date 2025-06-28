@@ -22,6 +22,7 @@ app.use(express.json());
 
 // --- API ROUTES ---
 
+
 // USERS
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
@@ -350,6 +351,59 @@ app.get('/api/rewards', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
+// ... (keep all existing code up to the POST /api/history route)
+
+// TYPING HISTORY & GAME LOGIC
+app.post('/api/history', async (req, res) => {
+    const { userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount } = req.body;
+    
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Save the typing history
+        const historyResult = await client.query(
+            'INSERT INTO typing_history (user_id, card_id, wpm, accuracy, time_elapsed, incorrect_letters, word_count, char_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount]
+        );
+
+        // 2. Award XP
+        const xpGained = charCount;
+        await client.query('UPDATE users SET trainer_experience = trainer_experience + $1 WHERE id = $2', [xpGained, userId]);
+
+        // 3. Assign a new mon if it's the user's first card
+        const historyCountRes = await client.query('SELECT COUNT(*) FROM typing_history WHERE user_id = $1', [userId]);
+        if (parseInt(historyCountRes.rows[0].count, 10) === 1) {
+            const firstStageMons = await client.query("SELECT id FROM mon_types WHERE evolution_stage = 'first'");
+            if (firstStageMons.rows.length > 0) {
+                const randomMon = firstStageMons.rows[Math.floor(Math.random() * firstStageMons.rows.length)];
+                await client.query(
+                    'INSERT INTO mons (user_id, mon_type_id) VALUES ($1, $2)',
+                    [userId, randomMon.id]
+                );
+            }
+        }
+        
+        // (Quest and achievement logic will go here later)
+        
+        await client.query('COMMIT');
+        res.status(201).json(historyResult.rows[0]);
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
+    }
+});
+
+
+// ... (the rest of your server.js file)
+
+
 
 app.listen(port, () => {
   console.log(`Backend server listening on port ${port}`);

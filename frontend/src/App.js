@@ -8,26 +8,11 @@ import AdminPanel from './components/AdminPanel';
 import UserProfile from './components/UserProfile';
 import JournalPage from './components/JournalPage';
 import { Tooltip } from './components/HelperComponents';
-import MonPage from './components/MonPage'; // Import the new component
-import QuestPage from './components/QuestPage'; // Import the new component
-import RewardPage from './components/RewardPage'; // Import the new component
-
+import MonPage from './components/MonPage';
+import QuestPage from './components/QuestPage';
+import RewardPage from './components/RewardPage';
 
 const api = {
-    saveUser: async (user) => {
-        const url = user.id ? `/api/users/${user.id}` : '/api/users';
-        const method = user.id ? 'PUT' : 'POST';
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(user),
-        });
-        return response.json();
-    },
-    deleteUser: async (id) => {
-        await fetch(`/api/users/${id}`, { method: 'DELETE' });
-    },
-  };
   login: async (identifier, password) => {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -92,25 +77,22 @@ const api = {
     return response.json();
   },
   saveUserSettings: async (userId, settings) => {
-      const response = await fetch(`/api/users/${userId}/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings }),
-      });
+    const response = await fetch(`/api/users/${userId}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings }),
+    });
     return response.json();
   },
 };
 
-// start edits
-
-// ... (imports and api object remain the same)
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('auth');
   const [cards, setCards] = useState([]);
   const [typingHistory, setTypingHistory] = useState([]);
-  const [allUsers, setAllUsers] = useState([]); // Changed to an array
+  const [allUsers, setAllUsers] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [siteSettings, setSiteSettings] = useState({});
   const [journalData, setJournalData] = useState([]);
@@ -140,7 +122,7 @@ export default function App() {
         setCards(await api.getCards());
         setAchievements(await api.getAchievements());
         setSiteSettings(await api.getSiteSettings());
-        setAllUsers(await api.getUsers()); // Fetch all users
+        setAllUsers(await api.getUsers());
         if (user && !user.isGuest) {
             setTypingHistory(await api.getHistory(user.id));
             setJournalData(await api.getJournal(user.id));
@@ -166,11 +148,6 @@ export default function App() {
   useEffect(() => {
     fetchData();
   }, [user]);
-
-  // ... (the rest of your App.js code remains the same)
-
-
-// end edits
 
   useEffect(() => {
     if (audioToPlay && audioRef.current) {
@@ -204,16 +181,6 @@ export default function App() {
     setSelectedCategory(null);
   };
   
-  const handleUsersChange = (changedUser) => {
-    if (changedUser.toDelete) {
-        api.deleteUser(changedUser.id).then(fetchData);
-    } else if (changedUser.id) {
-        api.updateUser(changedUser).then(fetchData);
-    } else {
-        api.createUser(changedUser).then(fetchData);
-    }
-  };
-
   const handleCardsChange = (newCards) => {
     if (Array.isArray(newCards)) {
         Promise.all(newCards.map(api.saveCard)).then(fetchData);
@@ -229,8 +196,18 @@ export default function App() {
   const handleSiteSettingsChange = (newSiteSettings) => {
       api.saveSiteSettings(newSiteSettings).then(fetchData);
   };
+  
+  const handleUsersChange = (changedUser) => {
+    if (changedUser.toDelete) {
+        api.deleteUser(changedUser.id).then(fetchData);
+    } else if (changedUser.id) {
+        api.saveUser(changedUser).then(fetchData);
+    } else {
+        api.saveUser(changedUser).then(fetchData);
+    }
+  };
 
-  const handleComplete = (stats) => {
+ const handleComplete = (stats) => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
     if (card.audio) {
@@ -244,6 +221,7 @@ export default function App() {
         ...stats,
     };
     api.saveHistory(newHistoryRecord).then(() => {
+               api.getUsers().then(setAllUsers);
         api.getHistory(user.id).then(setTypingHistory);
         // checkAndAwardAchievements(stats);
     });
@@ -276,17 +254,15 @@ export default function App() {
         return <AuthScreen onLogin={handleLogin} mockApi={api} />;
     }
 
-
-
     switch(view) {
-      case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={handleUsersChange} achievements={achievements} onAchievementsChange={handleAchievementsChange} siteSettings={siteSettings} onSiteSettingsChange={handleSiteSettingsChange} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;      case 'game': return renderGameView();
+      case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={handleUsersChange} achievements={achievements} onAchievementsChange={handleAchievementsChange} siteSettings={siteSettings} onSiteSettingsChange={handleSiteSettingsChange} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;
+      case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
       case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
-            case 'mons': return <MonPage user={user} />;
-            case 'quests': return <QuestPage user={user} />;
-            case 'rewards': return <RewardPage user={user} />;
-      
-case 'card_select': 
+      case 'mons': return <MonPage user={user} />;
+      case 'quests': return <QuestPage user={user} />;
+      case 'rewards': return <RewardPage user={user} />;
+      case 'card_select': 
         const categoryCards = cards.filter(c => user.isAdmin || (user.assigned_categories && user.assigned_categories.includes(c.category)));
         if(categoryCards.length === 0 && !user.isAdmin) {
             return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
@@ -323,31 +299,14 @@ case 'card_select':
         <div className="flex items-center gap-2 md:gap-4">
           {!user.isGuest && (<Tooltip text="My Journal"><button onClick={() => setView('journal')} className={`p-2 rounded-full ${view === 'journal' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><BookOpen size={20} /></button></Tooltip>)}
           {!user.isGuest && (<Tooltip text="My Profile"><button onClick={() => setView('profile')} className={`p-2 rounded-full ${view === 'profile' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><UserIcon size={20} /></button></Tooltip>)}
-                        {!user.isGuest && (
-                            <Tooltip text="Quests">
-                                <button onClick={() => setView('quests')} className={`p-2 rounded-full ${view === 'quests' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                                    <ClipboardList size={20} />
-                                </button>
-                            </Tooltip>
-                        )}
-                        {!user.isGuest && (
-                            <Tooltip text="Rewards">
-                                <button onClick={() => setView('rewards')} className={`p-2 rounded-full ${view === 'rewards' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                                    <Gift size={20} />
-                                </button>
-                            </Tooltip>
-                        )}                        
-{!user.isGuest && (
-                            <Tooltip text="My Mons">
-                                <button onClick={() => setView('mons')} className={`p-2 rounded-full ${view === 'mons' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                                    <Bone size={20} />
-                                </button>
-                            </Tooltip>
-                        )}
           {user.isAdmin && (<Tooltip text="Admin Panel"><button onClick={() => setView('admin')} className={`p-2 rounded-full ${view === 'admin' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Database size={20} /></button></Tooltip>)}
-            <Tooltip text={settings.showKeyboard ? 'Hide Keyboard' : 'Show Keyboard'}><button onClick={() => setSettings(s => ({...s, showKeyboard: !s.showKeyboard}))} className={`p-2 rounded-full ${settings.showKeyboard ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Keyboard size={20} /></button></Tooltip>
-  <Tooltip text={settings.soundEnabled ? 'Disable Sound' : 'Enable Sound'}><button onClick={() => setSettings(s => ({...s, soundEnabled: !s.soundEnabled}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}</button></Tooltip>
-  <Tooltip text={settings.isDarkMode ? 'Light Mode' : 'Dark Mode'}><button onClick={() => setSettings(s => ({...s, isDarkMode: !s.isDarkMode}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</button></Tooltip>          <div className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:block">{user.name}<button onClick={handleLogout} className="ml-2 hover:underline">(Logout)</button></div>
+          {!user.isGuest && (<Tooltip text="My Mons"><button onClick={() => setView('mons')} className={`p-2 rounded-full ${view === 'mons' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Bone size={20} /></button></Tooltip>)}
+          {!user.isGuest && (<Tooltip text="Quests"><button onClick={() => setView('quests')} className={`p-2 rounded-full ${view === 'quests' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><ClipboardList size={20} /></button></Tooltip>)}
+          {!user.isGuest && (<Tooltip text="Rewards"><button onClick={() => setView('rewards')} className={`p-2 rounded-full ${view === 'rewards' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Gift size={20} /></button></Tooltip>)}
+          <Tooltip text={settings.showKeyboard ? 'Hide Keyboard' : 'Show Keyboard'}><button onClick={() => setSettings(s => ({...s, showKeyboard: !s.showKeyboard}))} className={`p-2 rounded-full ${settings.showKeyboard ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Keyboard size={20} /></button></Tooltip>
+          <Tooltip text={settings.soundEnabled ? 'Disable Sound' : 'Enable Sound'}><button onClick={() => setSettings(s => ({...s, soundEnabled: !s.soundEnabled}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}</button></Tooltip>
+          <Tooltip text={settings.isDarkMode ? 'Light Mode' : 'Dark Mode'}><button onClick={() => setSettings(s => ({...s, isDarkMode: !s.isDarkMode}))} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700">{settings.isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</button></Tooltip>
+          <div className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:block">{user.name}<button onClick={handleLogout} className="ml-2 hover:underline">(Logout)</button></div>
         </div>
       </header>}
       <div className="container mx-auto">{renderView()}</div>
