@@ -7,7 +7,7 @@ export default function AuthScreen({ onLogin, mockApi }) {
   const [error, setError] = useState('');
 
   const handleGuestLogin = () => {
-    onLogin({ name: 'Guest', isAdmin: false, isGuest: true, unlockedAchievements: [] });
+    onLogin({ success: true, user: { name: 'Guest', isAdmin: false, isGuest: true, unlockedAchievements: [] }});
   };
 
   const handleSubmit = async (e) => {
@@ -15,7 +15,7 @@ export default function AuthScreen({ onLogin, mockApi }) {
     setError('');
     const response = await mockApi.login(identifier, password);
     if (response.success) {
-      onLogin(response.user);
+      onLogin(response);
     } else {
       setError(response.message || 'Authentication failed.');
     }
