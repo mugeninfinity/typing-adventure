@@ -44,6 +44,14 @@ const api = {
       return response.json();
   },
   getAchievements: async () => (await fetch('/api/achievements')).json(),
+  saveAchievements: async (achievements) => {
+    const response = await fetch('/api/achievements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(achievements),
+    });
+    return response.json();
+  },
   getJournal: async (userId) => (await fetch(`/api/journal/${userId}`)).json(),
   saveJournalEntry: async (entry) => {
     const url = entry.id ? `/api/journal/${entry.id}` : '/api/journal';
@@ -57,6 +65,22 @@ const api = {
   },
   deleteJournalEntry: async (id) => (await fetch(`/api/journal/${id}`, { method: 'DELETE' })).json(),
   getSiteSettings: async () => (await fetch('/api/site-settings')).json(),
+  saveSiteSettings: async (settings) => {
+    const response = await fetch('/api/site-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+    });
+    return response.json();
+  },
+  saveUserSettings: async (userId, settings) => {
+    const response = await fetch(`/api/users/${userId}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings }),
+    });
+    return response.json();
+  },
 };
 
 
@@ -72,18 +96,22 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [audioToPlay, setAudioToPlay] = useState(null);
-  const [settings, setSettings] = useState({ isDarkMode: true, soundEnabled: false, showKeyboard: true });
+  const [settings, setSettings] = useState({ 
+    isDarkMode: true, 
+    soundEnabled: false, 
+    showKeyboard: true 
+  });
   const [notificationQueue, setNotificationQueue] = useState([]);
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
   useEffect(() => {
-      const loggedInUser = localStorage.getItem("user");
-      if (loggedInUser) {
-          const foundUser = JSON.parse(loggedInUser);
-          setUser(foundUser);
-          setView('category_select');
-      }
+    const loggedInUser = localStorage.getItem("user");
+    if (loggedInUser) {
+        const foundUser = JSON.parse(loggedInUser);
+        setUser(foundUser);
+        setView('category_select');
+    }
   }, []);
 
   const fetchData = async () => {
@@ -102,7 +130,16 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.isDarkMode);
-  }, [settings.isDarkMode]);
+    if (user && !user.isGuest) {
+      api.saveUserSettings(user.id, settings);
+    }
+  }, [settings, user]);
+
+  useEffect(() => {
+    if (user && user.settings) {
+      setSettings(currentSettings => ({...currentSettings, ...user.settings}));
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchData();
@@ -140,8 +177,20 @@ export default function App() {
     setSelectedCategory(null);
   };
   
-  const handleCardsChange = () => {
-      fetchData();
+  const handleCardsChange = (newCards) => {
+    if (Array.isArray(newCards)) {
+        Promise.all(newCards.map(api.saveCard)).then(fetchData);
+    } else {
+        api.saveCard(newCards).then(fetchData);
+    }
+  };
+  
+  const handleAchievementsChange = (newAchievements) => {
+    api.saveAchievements(newAchievements).then(fetchData);
+  };
+  
+  const handleSiteSettingsChange = (newSiteSettings) => {
+      api.saveSiteSettings(newSiteSettings).then(fetchData);
   };
 
   const handleComplete = (stats) => {
@@ -191,7 +240,7 @@ export default function App() {
     }
 
     switch(view) {
-      case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={() => api.getUsers().then(setAllUsers)} achievements={achievements} onAchievementsChange={() => api.getAchievements().then(setAchievements)} siteSettings={siteSettings} onSiteSettingsChange={() => api.getSiteSettings().then(setSiteSettings)} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;
+      case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={() => api.getUsers().then(setAllUsers)} achievements={achievements} onAchievementsChange={handleAchievementsChange} siteSettings={siteSettings} onSiteSettingsChange={handleSiteSettingsChange} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
       case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
@@ -203,7 +252,7 @@ export default function App() {
         return (<div className="p-8"><h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{categoryCards.map((card, index) => (<div key={card.id} onClick={() => {setCurrentCardIndex(index); setView('game')}} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1"><h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3><p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p></div>))}</div><button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button></div>);
       case 'category_select':
         const allCategories = [...new Set(cards.map(c => c.category || 'Uncategorized'))];
-        const visibleCategories = user.isAdmin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c.category));
+        const visibleCategories = user.isAdmin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
         if(visibleCategories.length === 0 && !user.isAdmin) {
             return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
         }
