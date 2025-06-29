@@ -17,10 +17,82 @@ const pool = new Pool({
 });
 
 // --- MIDDLEWARE ---
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3052', // Allow the frontend to access the backend
+    credentials: true, // Allow cookies to be sent
+}));
+app.use(cookieParser());
 app.use(express.json());
 
+
+// Session Middleware
+app.use(session({
+    secret: 'a_very_secret_key_that_should_be_in_an_env_file', // In production, use an environment variable
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true, // The cookie is not accessible via client-side JavaScript
+        secure: false, // In production, set this to true and use HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 1 day
+    }
+}));
+
 // --- API ROUTES ---
+
+// AUTH
+app.post('/api/auth/login', async (req, res) => {
+    const { identifier, password } = req.body;
+    try {
+        const result = await pool.query('SELECT * FROM users WHERE email = $1 OR name = $1', [identifier]);
+        if (result.rows.length === 0) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+        }
+        
+        const dbUser = result.rows[0];
+        const passwordMatch = await bcrypt.compare(password, dbUser.password);
+
+        if (passwordMatch) {
+            const userPayload = {
+                id: dbUser.id,
+                email: dbUser.email,
+                name: dbUser.name,
+                isAdmin: dbUser.is_admin,
+                unlockedAchievements: dbUser.unlocked_achievements,
+                assignedCategories: dbUser.assigned_categories,
+                settings: dbUser.settings,
+            };
+            
+            // Set up the session
+            req.session.user = userPayload;
+
+            res.json({ success: true, user: userPayload });
+        } else {
+            res.status(401).json({ success: false, message: 'Invalid credentials.' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ message: 'Could not log out, please try again' });
+        }
+        res.clearCookie('connect.sid'); // The default session cookie name
+        res.json({ success: true, message: 'Logged out' });
+    });
+});
+
+app.get('/api/auth/check', (req, res) => {
+    if (req.session.user) {
+        res.json({ success: true, user: req.session.user });
+    } else {
+        res.json({ success: false });
+    }
+});
+
 
 // USERS
 app.post('/api/auth/login', async (req, res) => {

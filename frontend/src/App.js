@@ -13,6 +13,8 @@ import QuestPage from './components/QuestPage';
 import RewardPage from './components/RewardPage';
 
 const api = {
+checkAuth: async () => (await fetch('/api/auth/check')).json(),
+    logout: async () => (await fetch('/api/auth/logout', { method: 'POST' })).json(),
   login: async (identifier, password) => {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -89,7 +91,7 @@ const api = {
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('auth');
+  const [view, setView] = useState('loading'); // Start with a loading state
   const [cards, setCards] = useState([]);
   const [typingHistory, setTypingHistory] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -108,14 +110,23 @@ export default function App() {
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
-  useEffect(() => {
-      const loggedInUser = localStorage.getItem("user");
-      if (loggedInUser) {
-          const foundUser = JSON.parse(loggedInUser);
-          setUser(foundUser);
-          setView('category_select');
-      }
+ useEffect(() => {
+    api.checkAuth().then(data => {
+        if (data.success) {
+            setUser(data.user);
+            setView('category_select');
+        } else {
+            setView('auth');
+        }
+    });
   }, []);
+  
+  // This useEffect now runs when the user object is set
+  useEffect(() => {
+    if (user) {
+        fetchData();
+    }
+  }, [user]);
 
   const fetchData = async () => {
     try {
@@ -130,6 +141,20 @@ export default function App() {
     } catch (error) {
         console.error("Failed to fetch data:", error);
     }
+  };
+
+  const handleLogin = (data) => {
+    if (data.success) {
+        setUser(data.user);
+        setView('category_select');
+    }
+  };
+
+  const handleLogout = () => {
+    api.logout().then(() => {
+        setUser(null);
+        setView('auth');
+    });
   };
 
   useEffect(() => {
@@ -165,21 +190,6 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [notificationQueue]);
-
-  const handleLogin = (data) => {
-    if (data.success) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
-        setView('category_select');
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    setView('auth');
-    setSelectedCategory(null);
-  };
   
   const handleCardsChange = (newCards) => {
     if (Array.isArray(newCards)) {
@@ -272,8 +282,8 @@ export default function App() {
   };
   
   const renderView = () => {
-    if (!user) {
-        return <AuthScreen onLogin={handleLogin} mockApi={api} />;
+    if (view === 'loading') {
+        return <div className="p-8 text-center">Loading...</div>;
     }
 
     switch(view) {
