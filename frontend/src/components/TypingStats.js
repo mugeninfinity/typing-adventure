@@ -1,3 +1,4 @@
+// START COPYING HERE
 import React from 'react';
 
 export default function TypingStats({ history, journal }) {
@@ -49,3 +50,4 @@ export default function TypingStats({ history, journal }) {
         </div>
     );
 }
+// END COPYING HERE
