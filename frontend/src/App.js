@@ -1,3 +1,4 @@
+// START COPYING HERE
 import React, { useState, useEffect, useRef } from 'react';
 import { Database, Shield, Sun, Moon, Volume2, VolumeX, Upload, Trash2, Edit, LogIn, UserPlus, User as UserIcon, Keyboard, Download, ChevronsRight, Award, Users, Settings as SettingsIcon, Home, BookOpen, Bone, Gift, ClipboardList } from 'lucide-react';
 
@@ -13,8 +14,6 @@ import QuestPage from './components/QuestPage';
 import RewardPage from './components/RewardPage';
 
 const api = {
-checkAuth: async () => (await fetch('/api/auth/check')).json(),
-    logout: async () => (await fetch('/api/auth/logout', { method: 'POST' })).json(),
   login: async (identifier, password) => {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -23,7 +22,22 @@ checkAuth: async () => (await fetch('/api/auth/check')).json(),
     });
     return response.json();
   },
+  checkAuth: async () => (await fetch('/api/auth/check')).json(),
+  logout: async () => (await fetch('/api/auth/logout', { method: 'POST' })).json(),
   getUsers: async () => (await fetch('/api/users')).json(),
+  saveUser: async (user) => {
+      const url = user.id ? `/api/users/${user.id}` : '/api/users';
+      const method = user.id ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user),
+      });
+      return response.json();
+  },
+  deleteUser: async (id) => {
+      await fetch(`/api/users/${id}`, { method: 'DELETE' });
+  },
   getCards: async () => (await fetch('/api/cards')).json(),
   saveCard: async (card) => {
     const url = card.id ? `/api/cards/${card.id}` : '/api/cards';
@@ -36,8 +50,7 @@ checkAuth: async () => (await fetch('/api/auth/check')).json(),
     return response.json();
   },
   deleteCard: async (id) => {
-    const response = await fetch(`/api/cards/${id}`, { method: 'DELETE' });
-    return response.json();
+    await fetch(`/api/cards/${id}`, { method: 'DELETE' });
   },
   getHistory: async (userId) => (await fetch(`/api/history/${userId}`)).json(),
   saveHistory: async (history) => {
@@ -91,7 +104,7 @@ checkAuth: async () => (await fetch('/api/auth/check')).json(),
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('loading'); // Start with a loading state
+  const [view, setView] = useState('loading');
   const [cards, setCards] = useState([]);
   const [typingHistory, setTypingHistory] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -110,7 +123,7 @@ export default function App() {
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
- useEffect(() => {
+  useEffect(() => {
     api.checkAuth().then(data => {
         if (data.success) {
             setUser(data.user);
@@ -120,13 +133,6 @@ export default function App() {
         }
     });
   }, []);
-  
-  // This useEffect now runs when the user object is set
-  useEffect(() => {
-    if (user) {
-        fetchData();
-    }
-  }, [user]);
 
   const fetchData = async () => {
     try {
@@ -141,20 +147,6 @@ export default function App() {
     } catch (error) {
         console.error("Failed to fetch data:", error);
     }
-  };
-
-  const handleLogin = (data) => {
-    if (data.success) {
-        setUser(data.user);
-        setView('category_select');
-    }
-  };
-
-  const handleLogout = () => {
-    api.logout().then(() => {
-        setUser(null);
-        setView('auth');
-    });
   };
 
   useEffect(() => {
@@ -190,6 +182,20 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [notificationQueue]);
+
+  const handleLogin = (data) => {
+    if (data.success) {
+        setUser(data.user);
+        setView('category_select');
+    }
+  };
+
+  const handleLogout = () => {
+    api.logout().then(() => {
+        setUser(null);
+        setView('auth');
+    });
+  };
   
   const handleCardsChange = (newCards) => {
     if (Array.isArray(newCards)) {
@@ -235,34 +241,26 @@ export default function App() {
         if (response.unlockedAchievements && response.unlockedAchievements.length > 0) {
             setNotificationQueue(q => [...q, ...response.unlockedAchievements]);
             
-            // Create the updated user object
             const updatedUser = {
                 ...user,
                 unlocked_achievements: [...user.unlocked_achievements, ...response.unlockedAchievements.map(a => a.id)]
             };
 
-            // Update the user state and localStorage
             setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
         }
         api.getHistory(user.id).then(setTypingHistory);
     });
   };
-
+  
   const handleSelectCard = (index) => {
     setCurrentCardIndex(index);
     setView('game');
   };
   
-  
-   const renderGameView = () => {
+  const renderGameView = () => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
-    if (!card) {
-        // This can happen if the category is new and has no cards yet.
-        // Or if there's an issue with the card index.
-        return <div className="p-8 text-center">No card found. Please select another category.</div>;
-    }
+    if (!card) return <div className="p-8 text-center">No card found. Please select another category.</div>;
     
     const userHistory = typingHistory.filter((h) => h.card_id === card.id);
     const prevBest = userHistory.length > 0 ? userHistory.reduce((best, current) => (current.wpm > best.wpm ? current : best), { wpm: 0 }) : null;
@@ -286,6 +284,10 @@ export default function App() {
         return <div className="p-8 text-center">Loading...</div>;
     }
 
+    if (!user) {
+        return <AuthScreen onLogin={handleLogin} mockApi={api} />;
+    }
+
     switch(view) {
       case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={handleUsersChange} achievements={achievements} onAchievementsChange={handleAchievementsChange} siteSettings={siteSettings} onSiteSettingsChange={handleSiteSettingsChange} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;
       case 'game': return renderGameView();
@@ -294,18 +296,22 @@ export default function App() {
       case 'mons': return <MonPage user={user} />;
       case 'quests': return <QuestPage user={user} />;
       case 'rewards': return <RewardPage user={user} />;
-            case 'card_select': 
-        const categoryCards = cards.filter(c => user.isAdmin || (user.assigned_categories && user.assigned_categories.includes(c.category)));
-        const filteredCards = categoryCards.filter(c => c.category === selectedCategory);
-
-        if(filteredCards.length === 0) {
-            return <div className="p-8 text-center">This category has no cards yet.</div>
+      case 'card_select': 
+        const categoryCards = cards.filter(c => c.category === selectedCategory);
+        if(categoryCards.length === 0) {
+            return (
+                <div className="p-8">
+                    <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
+                    <p className="text-center">This category has no cards yet.</p>
+                    <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
+                </div>
+            );
         }
         return (
             <div className="p-8">
                 <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCards.map((card, index) => (
+                    {categoryCards.map((card, index) => (
                         <div key={card.id} onClick={() => handleSelectCard(index)} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1">
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3>
                             <p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p>
@@ -314,7 +320,8 @@ export default function App() {
                 </div>
                 <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
             </div>
-        );      case 'category_select':
+        );
+      case 'category_select':
         const allCategories = [...new Set(cards.map(c => c.category || 'Uncategorized'))];
         const visibleCategories = user.isAdmin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
         if(visibleCategories.length === 0 && !user.isAdmin) {
@@ -359,3 +366,4 @@ export default function App() {
     </main>
   );
 }
+// END COPYING HERE

@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const port = 3000;
