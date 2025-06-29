@@ -4,6 +4,8 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 const port = 3000;
@@ -27,12 +29,12 @@ const storage = multer.diskStorage({
  });
  const upload = multer({
     storage: storage
- }).single('media'); // 'media' is the name of the form field
+ }).single('media');
 
 // --- MIDDLEWARE ---
 app.use(cors({
-    origin: 'http://localhost:3052', // Allow the frontend to access the backend
-    credentials: true, // Allow cookies to be sent
+    origin: 'http://localhost:3052',
+    credentials: true, 
 }));
 app.use(cookieParser());
 app.use(express.json());
@@ -41,13 +43,13 @@ app.use('/uploads', express.static('uploads'));
 
 // Session Middleware
 app.use(session({
-    secret: 'a_very_secret_key_that_should_be_in_an_env_file', // In production, use an environment variable
+    secret: process.env.SESSION_SECRET || 'a_very_secret_key_that_should_be_in_an_env_file',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        httpOnly: true, // The cookie is not accessible via client-side JavaScript
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
+        maxAge: 24 * 60 * 60 * 1000
     }
 }));
 
@@ -76,9 +78,7 @@ app.post('/api/auth/login', async (req, res) => {
                 settings: dbUser.settings,
             };
             
-            // Set up the session
             req.session.user = userPayload;
-
             res.json({ success: true, user: userPayload });
         } else {
             res.status(401).json({ success: false, message: 'Invalid credentials.' });
@@ -94,7 +94,7 @@ app.post('/api/auth/logout', (req, res) => {
         if (err) {
             return res.status(500).json({ message: 'Could not log out, please try again' });
         }
-        res.clearCookie('connect.sid'); // The default session cookie name
+        res.clearCookie('connect.sid');
         res.json({ success: true, message: 'Logged out' });
     });
 });
@@ -106,6 +106,7 @@ app.get('/api/auth/check', (req, res) => {
         res.json({ success: false });
     }
 });
+
 
 
 // USERS
@@ -480,61 +481,63 @@ app.post('/api/user-rewards', async (req, res) => {
 // --- ACHIEVEMENT CHECKING LOGIC ---
 const checkAndAwardAchievements = async (client, userId, latestStats) => {
     const { wpm, accuracy } = latestStats;
+    try {
+        const achievementsRes = await client.query('SELECT * FROM achievements');
+        const allAchievements = achievementsRes.rows;
 
-    // Get all achievements and user's current achievements
-    const achievementsRes = await client.query('SELECT * FROM achievements');
-    const allAchievements = achievementsRes.rows;
+        const userRes = await client.query('SELECT unlocked_achievements FROM users WHERE id = $1', [userId]);
+        const userAchievements = userRes.rows[0].unlocked_achievements;
 
-    const userRes = await client.query('SELECT unlocked_achievements FROM users WHERE id = $1', [userId]);
-    const userAchievements = userRes.rows[0].unlocked_achievements;
+        const historyRes = await client.query('SELECT * FROM typing_history WHERE user_id = $1', [userId]);
+        const journalRes = await client.query('SELECT * FROM journal WHERE user_id = $1', [userId]);
+        const userHistory = historyRes.rows;
+        const userJournal = journalRes.rows;
 
-    // Get user's full history and journal stats
-    const historyRes = await client.query('SELECT * FROM typing_history WHERE user_id = $1', [userId]);
-    const journalRes = await client.query('SELECT * FROM journal WHERE user_id = $1', [userId]);
-    const userHistory = historyRes.rows;
-    const userJournal = journalRes.rows;
+        const totalCardsCompleted = userHistory.length;
+        const journalEntries = userJournal.length;
+        const journalWords = userJournal.reduce((sum, entry) => sum + (entry.word_count || 0), 0);
 
-    const totalCardsCompleted = userHistory.length;
-    const journalEntries = userJournal.length;
-    const journalWords = userJournal.reduce((sum, entry) => sum + (entry.word_count || 0), 0);
+        const newlyUnlocked = [];
 
-    const newlyUnlocked = [];
+        for (const ach of allAchievements) {
+            if (userAchievements.includes(ach.id)) {
+                continue;
+            }
 
-    for (const ach of allAchievements) {
-        if (userAchievements.includes(ach.id)) {
-            continue; // Skip already unlocked achievements
+            let unlocked = false;
+            switch (ach.type) {
+                case 'wpm':
+                    if (wpm >= ach.value) unlocked = true;
+                    break;
+                case 'accuracy':
+                    if (accuracy >= ach.value) unlocked = true;
+                    break;
+                case 'total_cards_completed':
+                    if (totalCardsCompleted >= ach.value) unlocked = true;
+                    break;
+                case 'journal_entries':
+                    if (journalEntries >= ach.value) unlocked = true;
+                    break;
+                case 'journal_words':
+                    if (journalWords >= ach.value) unlocked = true;
+                    break;
+            }
+
+            if (unlocked) {
+                newlyUnlocked.push(ach);
+            }
         }
 
-        let unlocked = false;
-        switch (ach.type) {
-            case 'wpm':
-                if (wpm >= ach.value) unlocked = true;
-                break;
-            case 'accuracy':
-                if (accuracy >= ach.value) unlocked = true;
-                break;
-            case 'total_cards_completed':
-                if (totalCardsCompleted >= ach.value) unlocked = true;
-                break;
-            case 'journal_entries':
-                if (journalEntries >= ach.value) unlocked = true;
-                break;
-            case 'journal_words':
-                if (journalWords >= ach.value) unlocked = true;
-                break;
+        if (newlyUnlocked.length > 0) {
+            const newAchievementsList = [...userAchievements, ...newlyUnlocked.map(a => a.id)];
+            await client.query('UPDATE users SET unlocked_achievements = $1 WHERE id = $2', [newAchievementsList, userId]);
         }
 
-        if (unlocked) {
-            newlyUnlocked.push(ach);
-        }
+        return newlyUnlocked;
+    } catch (err) {
+        console.error("Error checking achievements:", err);
+        return []; // Return empty array on error
     }
-
-    if (newlyUnlocked.length > 0) {
-        const newAchievementsList = [...userAchievements, ...newlyUnlocked.map(a => a.id)];
-        await client.query('UPDATE users SET unlocked_achievements = $1 WHERE id = $2', [newAchievementsList, userId]);
-    }
-
-    return newlyUnlocked;
 };
 
 // NEW: File Upload Endpoint
