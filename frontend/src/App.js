@@ -12,100 +12,7 @@ import { Tooltip } from './components/HelperComponents';
 import MonPage from './components/MonPage';
 import QuestPage from './components/QuestPage';
 import RewardPage from './components/RewardPage';
-
-const api = {
-  login: async (identifier, password) => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier, password }),
-    });
-    return response.json();
-  },
-  checkAuth: async () => (await fetch('/api/auth/check')).json(),
-  logout: async () => (await fetch('/api/auth/logout', { method: 'POST' })).json(),
-  getUsers: async () => (await fetch('/api/users')).json(),
-  saveUser: async (user) => {
-      const url = user.id ? `/api/users/${user.id}` : '/api/users';
-      const method = user.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(user),
-      });
-      return response.json();
-  },
-  deleteUser: async (id) => {
-      await fetch(`/api/users/${id}`, { method: 'DELETE' });
-  },
-  getCards: async () => (await fetch('/api/cards')).json(),
-  saveCard: async (card) => {
-    // FIX: Add a check to prevent errors if card is undefined
-    if (!card) {
-      console.error("saveCard called with undefined card");
-      return;
-    }
-    const url = card.id ? `/api/cards/${card.id}` : '/api/cards';
-    const method = card.id ? 'PUT' : 'POST';
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(card),
-    });
-    return response.json();
-  },
-  deleteCard: async (id) => {
-    await fetch(`/api/cards/${id}`, { method: 'DELETE' });
-  },
-  getHistory: async (userId) => (await fetch(`/api/history/${userId}`)).json(),
-  saveHistory: async (history) => {
-      const response = await fetch('/api/history', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(history),
-      });
-      return response.json();
-  },
-  getAchievements: async () => (await fetch('/api/achievements')).json(),
-  saveAchievements: async (achievements) => {
-    const response = await fetch('/api/achievements', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(achievements),
-    });
-    return response.json();
-  },
-  getJournal: async (userId) => (await fetch(`/api/journal/${userId}`)).json(),
-  saveJournalEntry: async (entry) => {
-    const url = entry.id ? `/api/journal/${entry.id}` : '/api/journal';
-    const method = entry.id ? 'PUT' : 'POST';
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry),
-    });
-    return response.json();
-  },
-  deleteJournalEntry: async (id) => (await fetch(`/api/journal/${id}`, { method: 'DELETE' })).json(),
-  getSiteSettings: async () => (await fetch('/api/site-settings')).json(),
-  saveSiteSettings: async (settings) => {
-    const response = await fetch('/api/site-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-    });
-    return response.json();
-  },
-  saveUserSettings: async (userId, settings) => {
-    const response = await fetch(`/api/users/${userId}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings }),
-    });
-    return response.json();
-  },
-};
-
+import * as api from './components/apiCall'; // Import all functions from our new api service
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -128,6 +35,7 @@ export default function App() {
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
+  // This useEffect hook now checks for a server session on mount
   useEffect(() => {
     api.checkAuth().then(data => {
         if (data.success) {
@@ -136,9 +44,9 @@ export default function App() {
         } else {
             setView('auth');
         }
-    });
+    }).catch(() => setView('auth'));
   }, []);
-
+  
   const fetchData = async () => {
     try {
         setCards(await api.getCards());
@@ -153,6 +61,13 @@ export default function App() {
         console.error("Failed to fetch data:", error);
     }
   };
+  
+  // This useEffect now runs when the user object is set
+  useEffect(() => {
+    if (user) {
+        fetchData();
+    }
+  }, [user]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.isDarkMode);
@@ -164,12 +79,6 @@ export default function App() {
   useEffect(() => {
     if (user && user.settings) {
       setSettings(currentSettings => ({...currentSettings, ...user.settings}));
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-        fetchData();
     }
   }, [user]);
 
@@ -204,34 +113,20 @@ export default function App() {
     });
   };
   
-  const handleCardsChange = (newCards) => {
-    if (Array.isArray(newCards)) {
-        Promise.all(newCards.map(api.saveCard)).then(fetchData);
-    } else {
-        if (!newCards) {
-            console.warn("handleCardsChange called with no card data.");
-            return;
-        }
-        api.saveCard(newCards).then(fetchData);
-    }
+  const handleCardsChange = () => {
+      fetchData();
   };
   
-  const handleAchievementsChange = (newAchievements) => {
-    api.saveAchievements(newAchievements).then(fetchData);
+  const handleAchievementsChange = () => {
+    fetchData();
   };
   
-  const handleSiteSettingsChange = (newSiteSettings) => {
-      api.saveSiteSettings(newSiteSettings).then(fetchData);
+  const handleSiteSettingsChange = () => {
+      fetchData();
   };
   
-  const handleUsersChange = (changedUser) => {
-    if (changedUser.toDelete) {
-        api.deleteUser(changedUser.id).then(fetchData);
-    } else if (changedUser.id) {
-        api.saveUser(changedUser).then(fetchData);
-    } else {
-        api.saveUser(changedUser).then(fetchData);
-    }
+  const handleUsersChange = () => {
+    fetchData();
   };
 
   const handleComplete = (stats) => {
@@ -259,7 +154,7 @@ export default function App() {
 
             setUser(updatedUser);
         }
-        api.getHistory(user.id).then(setTypingHistory);
+        fetchData();
     });
   };
   

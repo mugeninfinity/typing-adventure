@@ -1,7 +1,25 @@
 // START COPYING HERE
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download } from 'lucide-react';
-import { Modal, MediaInput } from './HelperComponents'; // Import MediaInput from its new home
+import { Modal } from './HelperComponents';
+import MediaInput from './MediaInput'; // Import the corrected media input
+import { uploadFile } from '../api'; // Import the new upload function
+
+
+const MediaInput = ({ name, value, onChange }) => {
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const data = await uploadFile(file);
+            if (data.success) {
+                onChange(name, data.path);
+            }
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            alert("Error uploading file.");
+        }
+    };
 
 const api = {
     saveCard: async (card) => {
@@ -65,7 +83,7 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
 
     const handleSaveCard = (e) => {
         e.preventDefault();
-        onCardsChange(currentCard);
+        onSave(currentCard); // Simply pass the card data up to the parent
         setIsEditing(false);
         setCurrentCard(null);
     };
