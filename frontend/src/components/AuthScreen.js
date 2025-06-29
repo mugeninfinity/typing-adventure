@@ -1,7 +1,8 @@
+// START COPYING HERE
 import React, { useState } from 'react';
 import { LogIn, UserPlus, User as UserIcon } from 'lucide-react';
 
-export default function AuthScreen({ onLogin, mockApi }) {
+export default function AuthScreen({ onLogin, api }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -13,7 +14,7 @@ export default function AuthScreen({ onLogin, mockApi }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const response = await mockApi.login(identifier, password);
+    const response = await api.login(identifier, password);
     if (response.success) {
       onLogin(response);
     } else {
@@ -59,3 +60,4 @@ export default function AuthScreen({ onLogin, mockApi }) {
     </div>
   );
 };
+// END COPYING HERE

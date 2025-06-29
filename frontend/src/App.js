@@ -285,7 +285,7 @@ export default function App() {
     }
 
     if (!user) {
-        return <AuthScreen onLogin={handleLogin} mockApi={api} />;
+        return <AuthScreen onLogin={handleLogin} api={api} />; // Pass the new api object
     }
 
     switch(view) {
@@ -297,30 +297,11 @@ export default function App() {
       case 'quests': return <QuestPage user={user} />;
       case 'rewards': return <RewardPage user={user} />;
       case 'card_select': 
-        const categoryCards = cards.filter(c => c.category === selectedCategory);
-        if(categoryCards.length === 0) {
-            return (
-                <div className="p-8">
-                    <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
-                    <p className="text-center">This category has no cards yet.</p>
-                    <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
-                </div>
-            );
+        const categoryCards = cards.filter(c => user.isAdmin || (user.assigned_categories && user.assigned_categories.includes(c.category)));
+        if(categoryCards.length === 0 && !user.isAdmin) {
+            return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
         }
-        return (
-            <div className="p-8">
-                <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {categoryCards.map((card, index) => (
-                        <div key={card.id} onClick={() => handleSelectCard(index)} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p>
-                        </div>
-                    ))}
-                </div>
-                <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
-            </div>
-        );
+        return (<div className="p-8"><h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{categoryCards.map((card, index) => (<div key={card.id} onClick={() => {setCurrentCardIndex(index); setView('game')}} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1"><h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3><p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p></div>))}</div><button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button></div>);
       case 'category_select':
         const allCategories = [...new Set(cards.map(c => c.category || 'Uncategorized'))];
         const visibleCategories = user.isAdmin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
@@ -328,10 +309,9 @@ export default function App() {
             return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
         }
         return (<div className="p-8"><h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Choose a Category</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{visibleCategories.map(category => (<div key={category} onClick={() => {setSelectedCategory(category); setView('card_select')}} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1 flex justify-between items-center"><h3 className="text-xl font-bold text-gray-900 dark:text-white">{category}</h3><ChevronsRight className="text-yellow-400"/></div>))}</div></div>);
-      default: return <AuthScreen onLogin={handleLogin} mockApi={api} />;
+      default: return <AuthScreen onLogin={handleLogin} api={api} />;
     }
   };
-
 
   return (
     <main className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300">
