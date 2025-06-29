@@ -272,9 +272,6 @@ app.post('/api/history', async (req, res) => {
     }
 });
 
-
-// ... (the rest of your API routes)
-
 // ACHIEVEMENTS
 app.get('/api/achievements', async (req, res) => {
     try {
