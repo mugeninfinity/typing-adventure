@@ -18,6 +18,17 @@ const pool = new Pool({
   port: process.env.POSTGRES_PORT,
 });
 
+// --- FILE UPLOAD SETUP ---
+const storage = multer.diskStorage({
+    destination: './uploads/',
+    filename: function(req, file, cb){
+       cb(null,file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+    }
+ });
+ const upload = multer({
+    storage: storage
+ }).single('media'); // 'media' is the name of the form field
+
 // --- MIDDLEWARE ---
 app.use(cors({
     origin: 'http://localhost:3052', // Allow the frontend to access the backend
@@ -25,6 +36,7 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 
 // Session Middleware
@@ -34,7 +46,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true, // The cookie is not accessible via client-side JavaScript
-        secure: false, // In production, set this to true and use HTTPS
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
 }));
@@ -524,6 +536,24 @@ const checkAndAwardAchievements = async (client, userId, latestStats) => {
 
     return newlyUnlocked;
 };
+
+// NEW: File Upload Endpoint
+app.post('/api/upload', (req, res) => {
+    upload(req, res, (err) => {
+        if(err){
+            res.status(500).json({ error: err.message });
+        } else {
+            if(req.file == undefined){
+                res.status(400).json({ error: 'No file selected!' });
+            } else {
+                res.json({
+                    success: true,
+                    path: `/uploads/${req.file.filename}`
+                });
+            }
+        }
+    });
+});
 
 
 app.listen(port, () => {
