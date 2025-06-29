@@ -1,3 +1,4 @@
+// START COPYING HERE
 import React, { useState, useRef } from 'react';
 import { Edit, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Trash2 } from 'lucide-react';
 import { Modal } from './HelperComponents';
@@ -9,7 +10,7 @@ const JournalEditor = ({ entry, onSave, onClose }) => {
         const plainText = editorRef.current.innerText || '';
         const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
         const charCount = plainText.length;
-        onSave({...entry, content: editorRef.current.innerHTML, word_count: wordCount, char_count: charCount });
+        onSave({...entry, content: editorRef.current.innerHTML, wordCount, charCount });
     };
 
     const handleFormat = (command) => { 
@@ -40,6 +41,7 @@ export default function JournalPage({ user, journal, onJournalChange, onDeleteEn
     const [confirmingDelete, setConfirmingDelete] = useState(null);
 
     const handleSaveJournal = (entry) => {
+        // This function now correctly passes the single entry to be saved or updated.
         onJournalChange(entry);
         setEditingEntry(null);
     };
@@ -60,20 +62,17 @@ export default function JournalPage({ user, journal, onJournalChange, onDeleteEn
         <div className="p-8">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-bold text-yellow-400">My Journal</h2>
-                <button onClick={() => setEditingEntry({id: null, content: '', word_count: 0, char_count: 0, user_id: user.id})} className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 font-bold rounded-md hover:bg-yellow-500">
+                <button onClick={() => setEditingEntry({id: null, user_id: user.id, content: '', wordCount: 0, charCount: 0})} className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 font-bold rounded-md hover:bg-yellow-500">
                     <Edit size={16}/> New Entry
                 </button>
             </div>
             <div className="space-y-4">
                 {journal.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).map(entry => {
-                    const plainText = (entry.content || '').replace(/<[^>]+>/g, '');
-                    const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
-                    const charCount = plainText.length;
                     return (
                         <div key={entry.id} onClick={() => setEditingEntry(entry)} className="p-4 bg-gray-200 dark:bg-gray-800 rounded-md cursor-pointer">
                             <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: entry.content }}></div>
                             <div className="flex justify-between items-center text-xs text-gray-500 mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
-                                <span>{new Date(entry.timestamp).toLocaleString()} | {wordCount} {wordCount === 1 ? 'word' : 'words'} | {charCount} {charCount === 1 ? 'character' : 'characters'}</span>
+                                <span>{new Date(entry.timestamp).toLocaleString()} | {entry.word_count} {entry.word_count === 1 ? 'word' : 'words'} | {entry.char_count} {entry.char_count === 1 ? 'character' : 'characters'}</span>
                                 <button onClick={(e) => handleDeleteClick(e, entry)} className="p-1 text-red-500 hover:text-red-400"><Trash2 size={14}/></button>
                             </div>
                         </div>
@@ -85,3 +84,4 @@ export default function JournalPage({ user, journal, onJournalChange, onDeleteEn
         </div>
     );
 }
+// END COPYING HERE
