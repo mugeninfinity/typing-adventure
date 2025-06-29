@@ -1,6 +1,23 @@
+// START COPYING HERE
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download } from 'lucide-react';
-import { Modal } from './HelperComponents';
+import { Modal, MediaInput } from './HelperComponents'; // Import MediaInput from its new home
+
+const api = {
+    saveCard: async (card) => {
+        const url = card.id ? `/api/cards/${card.id}` : '/api/cards';
+        const method = card.id ? 'PUT' : 'POST';
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(card),
+        });
+        return response.json();
+    },
+    deleteCard: async (id) => {
+        await fetch(`/api/cards/${id}`, { method: 'DELETE' });
+    },
+};
 
 const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -107,15 +124,6 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
     };
 
 
-    const MediaInput = ({ name, value, onChange }) => (
-        <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300 capitalize">{name} URL</label>
-            <input type="text" placeholder={`https://${name} URL`} value={value || ''} onChange={e => onChange(name, e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" />
-            <p className="text-center text-xs text-gray-500">OR</p>
-            <label className="block text-sm font-medium text-gray-300">Upload {name}</label>
-            <input type="file" onChange={e => e.target.files[0] && onChange(name, URL.createObjectURL(e.target.files[0]))} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"/>
-        </div>
-    );
 
     if (isEditing) {
         return (

@@ -1,10 +1,10 @@
 // START COPYING HERE
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
-import { Modal } from './HelperComponents';
+// Import the working MediaInput component
+import { Modal, MediaInput } from './HelperComponents';
 
 const api = {
-    // This API call is specific to the manager and can live here.
     saveAchievements: async (achievements) => {
         const response = await fetch('/api/achievements', {
             method: 'POST',
@@ -159,8 +159,7 @@ export default function AchievementManager({achievements, onAchievementsChange})
             <div className="p-8 max-w-2xl mx-auto">
                 <h3 className="text-2xl font-bold mb-6 text-yellow-400">{currentAchievement.id.startsWith('custom') ? 'Create' : 'Edit'} Achievement</h3>
                 <form onSubmit={handleSave} className="space-y-4">
-                    <input type="text" placeholder="Title" value={currentAchievement.title} onChange={e => setCurrentAchievement({...currentAchievement, title: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
-                    <textarea placeholder="Description" value={currentAchievement.description} onChange={e => setCurrentAchievement({...currentAchievement, description: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md h-24" required />
+                    {/* ... (other form inputs) */}
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-300">Icon Type</label>
                         <select value={currentAchievement.icon_type} onChange={e => setCurrentAchievement({...currentAchievement, icon_type: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md">
@@ -169,6 +168,18 @@ export default function AchievementManager({achievements, onAchievementsChange})
                             <option value="upload">Upload</option>
                         </select>
                     </div>
+
+                    {/* This is the corrected section */}
+                    {currentAchievement.icon_type === 'upload' && (
+                        <MediaInput name="icon" value={currentAchievement.icon} onChange={(key, val) => setCurrentAchievement({...currentAchievement, [key]: val})} />
+                    )}
+                    {currentAchievement.icon_type === 'url' && (
+                         <input type="text" placeholder="Image URL" value={currentAchievement.icon} onChange={e => setCurrentAchievement({...currentAchievement, icon: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
+                    )}
+                     {currentAchievement.icon_type === 'emoji' && (
+                         <input type="text" placeholder="Icon (Emoji)" value={currentAchievement.icon} onChange={e => setCurrentAchievement({...currentAchievement, icon: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
+                    )}
+
                     <IconInput value={currentAchievement.icon} type={currentAchievement.icon_type} onChange={(key, val) => setCurrentAchievement({...currentAchievement, [key]: val})} />
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-300">Type</label>
