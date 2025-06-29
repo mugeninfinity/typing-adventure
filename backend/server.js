@@ -22,7 +22,6 @@ app.use(express.json());
 
 // --- API ROUTES ---
 
-
 // USERS
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
@@ -43,7 +42,6 @@ app.post('/api/auth/login', async (req, res) => {
                 isAdmin: dbUser.is_admin,
                 unlockedAchievements: dbUser.unlocked_achievements,
                 assignedCategories: dbUser.assigned_categories,
-                settings: dbUser.settings,
             };
             res.json({ success: true, user: userPayload });
         } else {
@@ -319,350 +317,6 @@ app.put('/api/users/:id/settings', async (req, res) => {
 });
 
 // MONS
-app.get('/api/mons/:userId', async (req, res) => {
-    const { userId } = req.params;
-    try {
-        const result = await pool.query('SELECT * FROM mons WHERE user_id = $1', [userId]);
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// QUESTS
-app.get('/api/quests', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM quests');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// REWARDS
-app.get('/api/rewards', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM rewards');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-
-// ... (keep all existing code up to the POST /api/history route)
-
-// TYPING HISTORY & GAME LOGIC
-app.post('/api/history', async (req, res) => {
-    const { userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount } = req.body;
-    
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
-        // 1. Save the typing history
-        const historyResult = await client.query(
-            'INSERT INTO typing_history (user_id, card_id, wpm, accuracy, time_elapsed, incorrect_letters, word_count, char_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount]
-        );
-
-        // 2. Award XP
-        const xpGained = charCount;
-        await client.query('UPDATE users SET trainer_experience = trainer_experience + $1 WHERE id = $2', [xpGained, userId]);
-
-        // 3. Assign a new mon if it's the user's first card
-        const historyCountRes = await client.query('SELECT COUNT(*) FROM typing_history WHERE user_id = $1', [userId]);
-        if (parseInt(historyCountRes.rows[0].count, 10) === 1) {
-            const firstStageMons = await client.query("SELECT id FROM mon_types WHERE evolution_stage = 'first'");
-            if (firstStageMons.rows.length > 0) {
-                const randomMon = firstStageMons.rows[Math.floor(Math.random() * firstStageMons.rows.length)];
-                await client.query(
-                    'INSERT INTO mons (user_id, mon_type_id) VALUES ($1, $2)',
-                    [userId, randomMon.id]
-                );
-            }
-        }
-        
-        // (Quest and achievement logic will go here later)
-        
-        await client.query('COMMIT');
-        res.status(201).json(historyResult.rows[0]);
-
-    } catch (err) {
-        await client.query('ROLLBACK');
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    } finally {
-        client.release();
-    }
-});
-
-
-// ... (the rest of your server.js file)
-
-
-
-app.listen(port, () => {
-  console.log(`Backend server listening on port ${port}`);
-});
-
-// ... (keep all existing code up to the end of the achievements routes)
-
-// MON TYPES
-app.get('/api/mon-types', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM mon_types ORDER BY id ASC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/mon-types', async (req, res) => {
-    const { name, image_url, evolution_stage, evolves_at_level } = req.body;
-    try {
-        const result = await pool.query(
-            'INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, image_url, evolution_stage, evolves_at_level]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.put('/api/mon-types/:id', async (req, res) => {
-    const { id } = req.params;
-    const { name, image_url, evolution_stage, evolves_at_level } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE mon_types SET name = $1, image_url = $2, evolution_stage = $3, evolves_at_level = $4 WHERE id = $5 RETURNING *',
-            [name, image_url, evolution_stage, evolves_at_level, id]
-        );
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.delete('/api/mon-types/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM mon_types WHERE id = $1', [id]);
-        res.status(204).send();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-
-// ... (the rest of your server.js file)
-// ... (keep all existing code up to the end of the mon-types routes)
-
-// QUESTS
-app.get('/api/quests', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM quests ORDER BY id ASC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/quests', async (req, res) => {
-    const { title, description, type, goal, reward_money, reward_xp_multiplier } = req.body;
-    try {
-        const result = await pool.query(
-            'INSERT INTO quests (title, description, type, goal, reward_money, reward_xp_multiplier) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [title, description, type, goal, reward_money, reward_xp_multiplier]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.put('/api/quests/:id', async (req, res) => {
-    const { id } = req.params;
-    const { title, description, type, goal, reward_money, reward_xp_multiplier } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE quests SET title = $1, description = $2, type = $3, goal = $4, reward_money = $5, reward_xp_multiplier = $6 WHERE id = $7 RETURNING *',
-            [title, description, type, goal, reward_money, reward_xp_multiplier, id]
-        );
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.delete('/api/quests/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM quests WHERE id = $1', [id]);
-        res.status(204).send();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-
-// ... (the rest of your server.js file)
-// ... (keep all existing code up to the end of the quests routes)
-
-// REWARDS
-app.get('/api/rewards', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM rewards ORDER BY id ASC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/rewards', async (req, res) => {
-    const { name, description, cost } = req.body;
-    try {
-        const result = await pool.query(
-            'INSERT INTO rewards (name, description, cost) VALUES ($1, $2, $3) RETURNING *',
-            [name, description, cost]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.put('/api/rewards/:id', async (req, res) => {
-    const { id } = req.params;
-    const { name, description, cost } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE rewards SET name = $1, description = $2, cost = $3 WHERE id = $4 RETURNING *',
-            [name, description, cost, id]
-        );
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.delete('/api/rewards/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM rewards WHERE id = $1', [id]);
-        res.status(204).send();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.get('/api/user-rewards', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT user_rewards.*, users.name as user_name, rewards.name as reward_name FROM user_rewards JOIN users ON user_rewards.user_id = users.id JOIN rewards ON user_rewards.reward_id = rewards.id ORDER BY requested_at DESC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.put('/api/user-rewards/:id', async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE user_rewards SET status = $1 WHERE id = $2 RETURNING *',
-            [status, id]
-        );
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-
-// ... (the rest of your server.js file)
-
-// ... (keep all existing code up to the end of the cards routes)
-
-// USERS
-app.post('/api/auth/login', async (req, res) => {
-    // ... (login code remains the same)
-});
-
-app.get('/api/users', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users ORDER BY id ASC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/users', async (req, res) => {
-    const { email, password, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    try {
-        const result = await pool.query(
-            'INSERT INTO users (email, password, name, is_admin, unlocked_achievements, assigned_categories) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [email, hashedPassword, name, is_admin, unlocked_achievements, assigned_categories]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.put('/api/users/:id', async (req, res) => {
-    const { id } = req.params;
-    const { email, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE users SET email = $1, name = $2, is_admin = $3, unlocked_achievements = $4, assigned_categories = $5 WHERE id = $6 RETURNING *',
-            [email, name, is_admin, unlocked_achievements, assigned_categories, id]
-        );
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.delete('/api/users/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM users WHERE id = $1', [id]);
-        res.status(204).send();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// ... (the rest of your server.js file)
-
-// ... (keep all existing code up to the end of the mon-types routes)
-
-// USER'S MONS
 app.get('/api/users/:id/mons', async (req, res) => {
     const { id } = req.params;
     try {
@@ -677,14 +331,10 @@ app.get('/api/users/:id/mons', async (req, res) => {
     }
 });
 
-// ... (the rest of your server.js file)
-// ... (keep all existing code up to the end of the rewards routes)
-
-// USER QUESTS
-app.get('/api/users/:id/quests', async (req, res) => {
-    const { id } = req.params;
+// QUESTS
+app.get('/api/quests', async (req, res) => {
     try {
-        const result = await pool.query('SELECT uq.*, q.title, q.description, q.type, q.goal, q.reward_money, q.reward_xp_multiplier FROM user_quests uq JOIN quests q ON uq.quest_id = q.id WHERE uq.user_id = $1', [id]);
+        const result = await pool.query('SELECT * FROM quests');
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -706,7 +356,17 @@ app.post('/api/user-quests', async (req, res) => {
     }
 });
 
-// USER REWARDS
+// REWARDS
+app.get('/api/rewards', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM rewards');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.post('/api/user-rewards', async (req, res) => {
     const { user_id, reward_id } = req.body;
     try {
@@ -722,4 +382,6 @@ app.post('/api/user-rewards', async (req, res) => {
 });
 
 
-// ... (the rest of your server.js file)
+app.listen(port, () => {
+  console.log(`Backend server listening on port ${port}`);
+});

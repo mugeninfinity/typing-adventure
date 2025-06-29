@@ -18,7 +18,7 @@ export default function UserProfile({ user, history, achievements, journal }) {
                 <div>
                     <MonPage user={user} />
                     <div className="mt-8">
-                        <Badges achievements={achievements} unlockedAchievements={user.unlocked_achievements} getProgress={getProgress} />
+                        <Badges achievements={achievements} unlockedAchievements={user.unlocked_achievements || []} getProgress={getProgress} />
                     </div>
                 </div>
                 <div>
