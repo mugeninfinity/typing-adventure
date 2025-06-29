@@ -5,7 +5,6 @@ import { Modal } from './HelperComponents';
 
 const api = {
     saveAchievements: async (achievements) => {
-        // In a real app, you would likely have a more granular update/create endpoint
         const response = await fetch('/api/achievements', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -31,7 +30,7 @@ const IconInput = ({ value, type, onChange }) => {
             });
             const data = await response.json();
             if (data.success) {
-                // IMPORTANT: We now use the path returned from the server
+                // This is the crucial part: we use the path returned from the server
                 onChange('icon', data.path);
             } else {
                 throw new Error(data.error || 'File upload failed');
