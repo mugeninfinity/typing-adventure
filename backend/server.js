@@ -31,6 +31,7 @@ const storage = multer.diskStorage({
     storage: storage
  }).single('media');
 
+
 // --- MIDDLEWARE ---
 app.use(cors({
     origin: 'http://localhost:3052',
@@ -249,7 +250,19 @@ app.delete('/api/cards/:id', async (req, res) => {
 });
 
 
-// TYPING HISTORY & GAME LOGIC
+// TYPING HISTORY
+app.get('/api/history/:userId', async (req, res) => {
+    // FIX: Changed "id" to "userId" to match the route parameter
+    const { userId } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM typing_history WHERE user_id = $1', [userId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.post('/api/history', async (req, res) => {
     const { userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount } = req.body;
     
@@ -257,20 +270,15 @@ app.post('/api/history', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Save the typing history
         const historyResult = await client.query(
             'INSERT INTO typing_history (user_id, card_id, wpm, accuracy, time_elapsed, incorrect_letters, word_count, char_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
             [userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount]
         );
-
-        // (XP and quest logic will go here later)
         
-        // 4. Check for new achievements
         const newlyUnlocked = await checkAndAwardAchievements(client, userId, { wpm, accuracy });
         
         await client.query('COMMIT');
         
-        // Return the history record and any newly unlocked achievements
         res.status(201).json({ 
             history: historyResult.rows[0],
             unlockedAchievements: newlyUnlocked

@@ -2,9 +2,10 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
-import MediaInput from './MediaInput'; // Import the corrected media input
+import MediaInput from './MediaInput';
 
 const api = {
+    // This API call is specific to the manager and will now be used directly
     saveAchievements: async (achievements) => {
         const response = await fetch('/api/achievements', {
             method: 'POST',
@@ -13,48 +14,6 @@ const api = {
         });
         return response.json();
     },
-};
-
-const IconInput = ({ value, type, onChange }) => {
-    // This function now correctly uploads the file and calls the onChange prop
-    // with the REAL path from the server.
-    const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('media', file);
-
-        try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
-            if (data.success) {
-                // This is the critical fix:
-                // It calls the parent's onChange function to update the state.
-                onChange('icon', data.path);
-            } else {
-                throw new Error(data.error || 'File upload failed');
-            }
-        } catch (error) {
-            console.error("Error uploading file:", error);
-            alert("Error uploading file. See console for details.");
-        }
-    };
-
-    if (type === 'emoji') {
-        return <input type="text" placeholder="Icon (Emoji)" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
-    }
-    if (type === 'url') {
-        return <input type="text" placeholder="Image URL" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
-    }
-    if (type === 'upload') {
-        // This input now correctly triggers the handleFileChange function.
-        return <input type="file" onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"/>;
-    }
-    return null;
 };
 
 export default function AchievementManager({achievements, onAchievementsChange}) {
@@ -80,8 +39,9 @@ export default function AchievementManager({achievements, onAchievementsChange})
     const confirmDelete = () => {
         if(confirmingDelete) {
             const updatedAchievements = achievements.filter(a => a.id !== confirmingDelete.id);
+            // Directly call the API to save the change
             api.saveAchievements(updatedAchievements).then(() => {
-                onAchievementsChange();
+                onAchievementsChange(); // Then trigger a refresh
                 setConfirmingDelete(null);
             });
         }
@@ -93,8 +53,9 @@ export default function AchievementManager({achievements, onAchievementsChange})
             ? achievements.map(a => a.id === currentAchievement.id ? currentAchievement : a)
             : [...achievements, currentAchievement];
         
+        // Directly call the API to save the change
         api.saveAchievements(updated).then(() => {
-            onAchievementsChange();
+            onAchievementsChange(); // Then trigger a refresh
             setIsEditing(false);
             setCurrentAchievement(null);
         });
@@ -105,7 +66,32 @@ export default function AchievementManager({achievements, onAchievementsChange})
     };
 
     const handleImport = (e) => {
-        // This function is correct and remains unchanged
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').filter(row => row.trim() !== '');
+                const headers = rows.shift().split(',').map(h => h.replace(/"/g, '').trim());
+                const importedAchievements = rows.map(row => {
+                    const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"'));
+                    const achievement = headers.reduce((obj, header, index) => {
+                        obj[header] = values[index] || '';
+                        return obj;
+                    }, {});
+                    return achievement;
+                });
+                // Directly call the API to save the change
+                api.saveAchievements([...achievements, ...importedAchievements]).then(onAchievementsChange);
+                alert(`${importedAchievements.length} achievements imported successfully!`);
+            } catch (error) {
+                alert("Failed to import CSV. Please check the file format.");
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = null;
     };
 
     const achievementTypes = ['wpm', 'accuracy', 'total_cards_completed', 'total_words_typed', 'total_chars_typed', 'total_cards_day', 'total_cards_week', 'total_cards_month', 'journal_entries', 'journal_words', 'journal_chars', 'journal_entry_words', 'journal_entry_chars'];
@@ -151,6 +137,10 @@ export default function AchievementManager({achievements, onAchievementsChange})
             </div>
         );
     }
+    
+    // ... (The rest of the component's JSX remains the same)
+
+// END COPYING HERE
     
     return (
         <div>
