@@ -4,6 +4,7 @@ import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
 
 const api = {
+    // This API call is specific to the manager and can live here.
     saveAchievements: async (achievements) => {
         const response = await fetch('/api/achievements', {
             method: 'POST',
@@ -14,14 +15,15 @@ const api = {
     },
 };
 
-// This self-contained component now handles the file upload correctly
 const IconInput = ({ value, type, onChange }) => {
+    // This function now correctly uploads the file and calls the onChange prop
+    // with the REAL path from the server.
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const formData = new FormData();
-        formData.append('media', file); // 'media' must match the field name in your multer config
+        formData.append('media', file);
 
         try {
             const response = await fetch('/api/upload', {
@@ -30,7 +32,8 @@ const IconInput = ({ value, type, onChange }) => {
             });
             const data = await response.json();
             if (data.success) {
-                // This is the crucial part: we use the path returned from the server
+                // This is the critical fix:
+                // It calls the parent's onChange function to update the state.
                 onChange('icon', data.path);
             } else {
                 throw new Error(data.error || 'File upload failed');
@@ -41,9 +44,16 @@ const IconInput = ({ value, type, onChange }) => {
         }
     };
 
-    if (type === 'emoji') return <input type="text" placeholder="Icon (Emoji)" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
-    if (type === 'url') return <input type="text" placeholder="Image URL" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
-    if (type === 'upload') return <input type="file" onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"/>;
+    if (type === 'emoji') {
+        return <input type="text" placeholder="Icon (Emoji)" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
+    }
+    if (type === 'url') {
+        return <input type="text" placeholder="Image URL" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
+    }
+    if (type === 'upload') {
+        // This input now correctly triggers the handleFileChange function.
+        return <input type="file" onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"/>;
+    }
     return null;
 };
 
