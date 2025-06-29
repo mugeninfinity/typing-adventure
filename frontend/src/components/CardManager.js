@@ -3,8 +3,6 @@ import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download } from 'lucide-react';
 import { Modal } from './HelperComponents';
 import MediaInput from './MediaInput'; // Import the corrected media input
-import { uploadFile } from '../api'; // Import the new upload function
-
 
 const MediaInput = ({ name, value, onChange }) => {
     const handleFileChange = async (e) => {

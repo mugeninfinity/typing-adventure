@@ -8,10 +8,19 @@ const handleResponse = async (response) => {
         throw new Error(error || `HTTP error! status: ${response.status}`);
     }
     const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
+    if (contentType && contentType.includes("application/json")) {
         return response.json();
     }
     return { success: true };
+};
+
+export const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('media', file);
+    return handleResponse(await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+    }));
 };
 
 export const checkAuth = async () => handleResponse(await fetch('/api/auth/check'));
@@ -43,10 +52,6 @@ export const deleteUser = async (id) => handleResponse(await fetch(`/api/users/$
 export const getCards = async () => handleResponse(await fetch('/api/cards'));
 
 export const saveCard = async (card) => {
-    if (!card) {
-        console.error("saveCard called with undefined card");
-        return;
-    }
     const url = card.id ? `/api/cards/${card.id}` : '/api/cards';
     const method = card.id ? 'PUT' : 'POST';
     return handleResponse(await fetch(url, {

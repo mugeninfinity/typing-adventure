@@ -350,8 +350,9 @@ export default function AdminPanel({ cards, onCardsChange, users, onUsersChange,
                 return <CardManager ref={childRef} cards={cards} onCardsChange={onCardsChange} />;
             case 'users':
                 return <UserManager users={users} onUsersChange={onUsersChange} />;
-            case 'achievements':
-                return <AchievementManager achievements={achievements} onAchievementsChange={onAchievementsChange} />;
+ // FIX: The onAchievementsChange prop is now correctly passed to the AchievementManager
+ case 'achievements':
+    return <AchievementManager achievements={achievements} onAchievementsChange={onAchievementsChange} />;
             case 'site':
                 return <SiteSettingsManager settings={siteSettings} onSettingsChange={onSiteSettingsChange} />;
             case 'mons':

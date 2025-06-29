@@ -1,29 +1,19 @@
 // START COPYING HERE
 import React from 'react';
+import { uploadFile } from './components/apiCall'; // Use our new API service
 
 export default function MediaInput({ name, value, onChange }) {
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        const formData = new FormData();
-        formData.append('media', file);
-
         try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
+            const data = await uploadFile(file);
             if (data.success) {
-                // This is the crucial part: we use the path from the server
-                onChange(name, data.path);
-            } else {
-                throw new Error(data.error || 'File upload failed');
+                onChange(name, data.path); // Pass the server path back to the parent
             }
         } catch (error) {
             console.error("Error uploading file:", error);
-            alert("Error uploading file. See console for details.");
+            alert("Error uploading file.");
         }
     };
 
