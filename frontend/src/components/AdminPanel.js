@@ -89,8 +89,9 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
 
     const handleSaveCard = (e) => {
         e.preventDefault();
+        // FIX: Directly call the API to save the card, then trigger a refresh
         api.saveCard(currentCard).then(() => {
-            onCardsChange();
+            onCardsChange(); // This re-fetches all cards from the backend
             setIsEditing(false);
             setCurrentCard(null);
         });
