@@ -231,11 +231,13 @@ app.get('/api/journal/:userId', async (req, res) => {
 });
 
 app.post('/api/journal', async (req, res) => {
-    const { userId, content, wordCount, charCount } = req.body;
+    // FIX: Changed "userId" to "user_id" to match the frontend
+    const { user_id, content, wordCount, charCount } = req.body;
     try {
         const result = await pool.query(
             'INSERT INTO journal (user_id, content, word_count, char_count) VALUES ($1, $2, $3, $4) RETURNING *',
-            [userId, content, wordCount, charCount]
+            // FIX: Pass the correct variable to the query
+            [user_id, content, wordCount, charCount]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -269,7 +271,6 @@ app.delete('/api/journal/:id', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
 
 // SITE SETTINGS
 app.get('/api/site-settings', async (req, res) => {
