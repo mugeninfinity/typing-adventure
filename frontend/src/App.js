@@ -40,6 +40,11 @@ const api = {
   },
   getCards: async () => (await fetch('/api/cards')).json(),
   saveCard: async (card) => {
+    // FIX: Add a check to prevent errors if card is undefined
+    if (!card) {
+      console.error("saveCard called with undefined card");
+      return;
+    }
     const url = card.id ? `/api/cards/${card.id}` : '/api/cards';
     const method = card.id ? 'PUT' : 'POST';
     const response = await fetch(url, {
@@ -163,7 +168,9 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    fetchData();
+    if (user) {
+        fetchData();
+    }
   }, [user]);
 
   useEffect(() => {
@@ -201,6 +208,10 @@ export default function App() {
     if (Array.isArray(newCards)) {
         Promise.all(newCards.map(api.saveCard)).then(fetchData);
     } else {
+        if (!newCards) {
+            console.warn("handleCardsChange called with no card data.");
+            return;
+        }
         api.saveCard(newCards).then(fetchData);
     }
   };
@@ -285,7 +296,7 @@ export default function App() {
     }
 
     if (!user) {
-        return <AuthScreen onLogin={handleLogin} api={api} />; // Pass the new api object
+        return <AuthScreen onLogin={handleLogin} api={api} />;
     }
 
     switch(view) {
@@ -298,7 +309,6 @@ export default function App() {
       case 'rewards': return <RewardPage user={user} />;
       case 'card_select': 
         const categoryCards = cards.filter(c => c.category === selectedCategory);
-
         if(categoryCards.length === 0) {
             return (
                 <div className="p-8">
@@ -332,6 +342,7 @@ export default function App() {
       default: return <AuthScreen onLogin={handleLogin} api={api} />;
     }
   };
+
 
   return (
     <main className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300">
