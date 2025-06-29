@@ -162,32 +162,44 @@ app.delete('/api/cards/:id', async (req, res) => {
 });
 
 
-// TYPING HISTORY
-app.get('/api/history/:userId', async (req, res) => {
-    const { userId } = req.params;
-    try {
-        const result = await pool.query('SELECT * FROM typing_history WHERE user_id = $1', [userId]);
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
+// TYPING HISTORY & GAME LOGIC
 app.post('/api/history', async (req, res) => {
     const { userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount } = req.body;
+    
+    const client = await pool.connect();
     try {
-        const result = await pool.query(
+        await client.query('BEGIN');
+
+        // 1. Save the typing history
+        const historyResult = await client.query(
             'INSERT INTO typing_history (user_id, card_id, wpm, accuracy, time_elapsed, incorrect_letters, word_count, char_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
             [userId, cardId, wpm, accuracy, timeElapsed, incorrectLetters, wordCount, charCount]
         );
-        res.status(201).json(result.rows[0]);
+
+        // (XP and quest logic will go here later)
+        
+        // 4. Check for new achievements
+        const newlyUnlocked = await checkAndAwardAchievements(client, userId, { wpm, accuracy });
+        
+        await client.query('COMMIT');
+        
+        // Return the history record and any newly unlocked achievements
+        res.status(201).json({ 
+            history: historyResult.rows[0],
+            unlockedAchievements: newlyUnlocked
+        });
+
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
 });
 
+
+// ... (the rest of your API routes)
 
 // ACHIEVEMENTS
 app.get('/api/achievements', async (req, res) => {
@@ -381,6 +393,66 @@ app.post('/api/user-rewards', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// --- ACHIEVEMENT CHECKING LOGIC ---
+const checkAndAwardAchievements = async (client, userId, latestStats) => {
+    const { wpm, accuracy } = latestStats;
+
+    // Get all achievements and user's current achievements
+    const achievementsRes = await client.query('SELECT * FROM achievements');
+    const allAchievements = achievementsRes.rows;
+
+    const userRes = await client.query('SELECT unlocked_achievements FROM users WHERE id = $1', [userId]);
+    const userAchievements = userRes.rows[0].unlocked_achievements;
+
+    // Get user's full history and journal stats
+    const historyRes = await client.query('SELECT * FROM typing_history WHERE user_id = $1', [userId]);
+    const journalRes = await client.query('SELECT * FROM journal WHERE user_id = $1', [userId]);
+    const userHistory = historyRes.rows;
+    const userJournal = journalRes.rows;
+
+    const totalCardsCompleted = userHistory.length;
+    const journalEntries = userJournal.length;
+    const journalWords = userJournal.reduce((sum, entry) => sum + (entry.word_count || 0), 0);
+
+    const newlyUnlocked = [];
+
+    for (const ach of allAchievements) {
+        if (userAchievements.includes(ach.id)) {
+            continue; // Skip already unlocked achievements
+        }
+
+        let unlocked = false;
+        switch (ach.type) {
+            case 'wpm':
+                if (wpm >= ach.value) unlocked = true;
+                break;
+            case 'accuracy':
+                if (accuracy >= ach.value) unlocked = true;
+                break;
+            case 'total_cards_completed':
+                if (totalCardsCompleted >= ach.value) unlocked = true;
+                break;
+            case 'journal_entries':
+                if (journalEntries >= ach.value) unlocked = true;
+                break;
+            case 'journal_words':
+                if (journalWords >= ach.value) unlocked = true;
+                break;
+        }
+
+        if (unlocked) {
+            newlyUnlocked.push(ach);
+        }
+    }
+
+    if (newlyUnlocked.length > 0) {
+        const newAchievementsList = [...userAchievements, ...newlyUnlocked.map(a => a.id)];
+        await client.query('UPDATE users SET unlocked_achievements = $1 WHERE id = $2', [newAchievementsList, userId]);
+    }
+
+    return newlyUnlocked;
+};
 
 
 app.listen(port, () => {

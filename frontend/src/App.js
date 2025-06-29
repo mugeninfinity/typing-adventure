@@ -207,7 +207,7 @@ export default function App() {
     }
   };
 
- const handleComplete = (stats) => {
+  const handleComplete = (stats) => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
     if (card.audio) {
@@ -220,10 +220,22 @@ export default function App() {
         cardId: card.id,
         ...stats,
     };
-    api.saveHistory(newHistoryRecord).then(() => {
-               api.getUsers().then(setAllUsers);
+    
+    api.saveHistory(newHistoryRecord).then((response) => {
+        if (response.unlockedAchievements && response.unlockedAchievements.length > 0) {
+            setNotificationQueue(q => [...q, ...response.unlockedAchievements]);
+            
+            // Create the updated user object
+            const updatedUser = {
+                ...user,
+                unlocked_achievements: [...user.unlocked_achievements, ...response.unlockedAchievements.map(a => a.id)]
+            };
+
+            // Update the user state and localStorage
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
         api.getHistory(user.id).then(setTypingHistory);
-        // checkAndAwardAchievements(stats);
     });
   };
   
