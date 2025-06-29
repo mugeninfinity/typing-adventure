@@ -1,13 +1,56 @@
+// START COPYING HERE
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
+
+const api = {
+    saveAchievements: async (achievements) => {
+        const response = await fetch('/api/achievements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(achievements),
+        });
+        return response.json();
+    },
+};
+
+const IconInput = ({ value, type, onChange }) => {
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('media', file);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            if (data.success) {
+                onChange('icon', data.path);
+            } else {
+                throw new Error(data.error || 'File upload failed');
+            }
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            alert("Error uploading file. See console for details.");
+        }
+    };
+
+    if (type === 'emoji') return <input type="text" placeholder="Icon (Emoji)" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
+    if (type === 'url') return <input type="text" placeholder="Image URL" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
+    if (type === 'upload') return <input type="file" onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"/>;
+    return null;
+};
 
 export default function AchievementManager({achievements, onAchievementsChange}) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentAchievement, setCurrentAchievement] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
     const importFileRef = useRef(null);
-
+    
     const handleNew = () => {
         setCurrentAchievement({ id: `custom_${Date.now()}`, title: '', description: '', icon: '??', icon_type: 'emoji', type: 'wpm', value: 100 });
         setIsEditing(true);
@@ -24,21 +67,27 @@ export default function AchievementManager({achievements, onAchievementsChange})
 
     const confirmDelete = () => {
         if(confirmingDelete) {
-            onAchievementsChange(achievements.filter(a => a.id !== confirmingDelete.id));
-            setConfirmingDelete(null);
+            const updatedAchievements = achievements.filter(a => a.id !== confirmingDelete.id);
+            api.saveAchievements(updatedAchievements).then(() => {
+                onAchievementsChange();
+                setConfirmingDelete(null);
+            });
         }
     };
 
     const handleSave = (e) => {
         e.preventDefault();
-        const updated = achievements.find(a => a.id === currentAchievement.id)
+        const updated = achievements.find(a => a.id === currentAchievement.id) 
             ? achievements.map(a => a.id === currentAchievement.id ? currentAchievement : a)
             : [...achievements, currentAchievement];
-        onAchievementsChange(updated);
-        setIsEditing(false);
-        setCurrentAchievement(null);
+        
+        api.saveAchievements(updated).then(() => {
+            onAchievementsChange();
+            setIsEditing(false);
+            setCurrentAchievement(null);
+        });
     };
-    
+
     const handleExport = () => {
         const headers = Object.keys(achievements[0] || {});
         if (headers.length === 0) return;
@@ -80,7 +129,7 @@ export default function AchievementManager({achievements, onAchievementsChange})
                     }, {});
                     return achievement;
                 });
-                onAchievementsChange(importedAchievements);
+                api.saveAchievements([...achievements, ...importedAchievements]).then(onAchievementsChange);
                 alert(`${importedAchievements.length} achievements imported successfully!`);
             } catch (error) {
                 alert("Failed to import CSV. Please check the file format.");
@@ -92,21 +141,14 @@ export default function AchievementManager({achievements, onAchievementsChange})
     };
 
     const achievementTypes = ['wpm', 'accuracy', 'total_cards_completed', 'total_words_typed', 'total_chars_typed', 'total_cards_day', 'total_cards_week', 'total_cards_month', 'journal_entries', 'journal_words', 'journal_chars', 'journal_entry_words', 'journal_entry_chars'];
-    
-    const IconInput = ({ value, type, onChange }) => {
-        if (type === 'emoji') return <input type="text" placeholder="Icon (Emoji)" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
-        if (type === 'url') return <input type="text" placeholder="Image URL" value={value} onChange={e => onChange('icon', e.target.value)} className="w-full p-2 bg-gray-700 text-white rounded-md" required />;
-        if (type === 'upload') return <input type="file" onChange={e => e.target.files[0] && onChange('icon', URL.createObjectURL(e.target.files[0]))} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"/>;
-        return null;
-    };
-    
+
     if(isEditing) {
         return (
             <div className="p-8 max-w-2xl mx-auto">
                 <h3 className="text-2xl font-bold mb-6 text-yellow-400">{currentAchievement.id.startsWith('custom') ? 'Create' : 'Edit'} Achievement</h3>
                 <form onSubmit={handleSave} className="space-y-4">
                     <input type="text" placeholder="Title" value={currentAchievement.title} onChange={e => setCurrentAchievement({...currentAchievement, title: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
-                    <input type="text" placeholder="Description" value={currentAchievement.description} onChange={e => setCurrentAchievement({...currentAchievement, description: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
+                    <textarea placeholder="Description" value={currentAchievement.description} onChange={e => setCurrentAchievement({...currentAchievement, description: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md h-24" required />
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-300">Icon Type</label>
                         <select value={currentAchievement.icon_type} onChange={e => setCurrentAchievement({...currentAchievement, icon_type: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md">
@@ -131,7 +173,7 @@ export default function AchievementManager({achievements, onAchievementsChange})
             </div>
         );
     }
-
+    
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -165,3 +207,4 @@ export default function AchievementManager({achievements, onAchievementsChange})
         </div>
     );
 }
+// END COPYING HERE

@@ -298,18 +298,24 @@ app.get('/api/achievements', async (req, res) => {
 
 app.post('/api/achievements', async (req, res) => {
     const achievements = req.body;
+    const client = await pool.connect();
     try {
-        await pool.query('DELETE FROM achievements');
+        await client.query('BEGIN');
+        await client.query('DELETE FROM achievements');
         const result = await Promise.all(achievements.map(ach => {
-            return pool.query(
+            return client.query(
                 'INSERT INTO achievements (id, title, description, icon, icon_type, type, value) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
                 [ach.id, ach.title, ach.description, ach.icon, ach.icon_type, ach.type, ach.value]
             );
         }));
+        await client.query('COMMIT');
         res.status(201).json(result.map(r => r.rows[0]));
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
 });
 
