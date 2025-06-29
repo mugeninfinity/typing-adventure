@@ -5,6 +5,7 @@ import { Modal } from './HelperComponents';
 
 const api = {
     saveAchievements: async (achievements) => {
+        // In a real app, you would likely have a more granular update/create endpoint
         const response = await fetch('/api/achievements', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -14,13 +15,14 @@ const api = {
     },
 };
 
+// This self-contained component now handles the file upload correctly
 const IconInput = ({ value, type, onChange }) => {
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const formData = new FormData();
-        formData.append('media', file);
+        formData.append('media', file); // 'media' must match the field name in your multer config
 
         try {
             const response = await fetch('/api/upload', {
@@ -29,6 +31,7 @@ const IconInput = ({ value, type, onChange }) => {
             });
             const data = await response.json();
             if (data.success) {
+                // IMPORTANT: We now use the path returned from the server
                 onChange('icon', data.path);
             } else {
                 throw new Error(data.error || 'File upload failed');
