@@ -1,23 +1,9 @@
+// START COPYING HERE
 import React, { useState, useEffect } from 'react';
 import { Upload, Trash2, Edit, Bone } from 'lucide-react';
 import { Modal } from './HelperComponents';
-
-const api = {
-    getMonTypes: async () => (await fetch('/api/mon-types')).json(),
-    saveMonType: async (monType) => {
-        const url = monType.id ? `/api/mon-types/${monType.id}` : '/api/mon-types';
-        const method = monType.id ? 'PUT' : 'POST';
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(monType),
-        });
-        return response.json();
-    },
-    deleteMonType: async (id) => {
-        await fetch(`/api/mon-types/${id}`, { method: 'DELETE' });
-    },
-};
+import * as api from './apiCall';
+import MediaInput from './MediaInput';
 
 export default function MonManager() {
     const [monTypes, setMonTypes] = useState([]);
@@ -36,11 +22,11 @@ export default function MonManager() {
 
     const handleNew = () => {
         setCurrentMonType({
-            id: null,
             name: '',
             image_url: '',
             evolution_stage: 'first',
             evolves_at_level: 10,
+            next_evolution_id: null
         });
         setIsEditing(true);
     };
@@ -57,7 +43,7 @@ export default function MonManager() {
     const confirmDelete = async () => {
         if (confirmingDelete) {
             await api.deleteMonType(confirmingDelete.id);
-            await fetchMonTypes();
+            fetchMonTypes();
             setConfirmingDelete(null);
         }
     };
@@ -65,7 +51,7 @@ export default function MonManager() {
     const handleSave = async (e) => {
         e.preventDefault();
         await api.saveMonType(currentMonType);
-        await fetchMonTypes();
+        fetchMonTypes();
         setIsEditing(false);
         setCurrentMonType(null);
     };
@@ -85,14 +71,9 @@ export default function MonManager() {
                         className="w-full p-2 bg-gray-700 text-white rounded-md"
                         required
                     />
-                    <input
-                        type="text"
-                        placeholder="Image URL"
-                        value={currentMonType.image_url}
-                        onChange={(e) => setCurrentMonType({ ...currentMonType, image_url: e.target.value })}
-                        className="w-full p-2 bg-gray-700 text-white rounded-md"
-                        required
-                    />
+                    
+                    <MediaInput name="image_url" value={currentMonType.image_url} onChange={(key, val) => setCurrentMonType({...currentMonType, [key]: val})} />
+
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-300">Evolution Stage</label>
                         <select
@@ -108,11 +89,23 @@ export default function MonManager() {
                     <input
                         type="number"
                         placeholder="Evolves at Level"
-                        value={currentMonType.evolves_at_level}
-                        onChange={(e) => setCurrentMonType({ ...currentMonType, evolves_at_level: parseInt(e.target.value) || 0 })}
+                        value={currentMonType.evolves_at_level || ''}
+                        onChange={(e) => setCurrentMonType({ ...currentMonType, evolves_at_level: e.target.value ? parseInt(e.target.value) : null })}
                         className="w-full p-2 bg-gray-700 text-white rounded-md"
-                        required
                     />
+                    <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-300">Next Evolution</label>
+                        <select
+                            value={currentMonType.next_evolution_id || ''}
+                            onChange={(e) => setCurrentMonType({ ...currentMonType, next_evolution_id: e.target.value ? parseInt(e.target.value) : null })}
+                            className="w-full p-2 bg-gray-700 text-white rounded-md"
+                        >
+                            <option value="">None</option>
+                            {monTypes.filter(mt => mt.id !== currentMonType.id).map(mt => (
+                                <option key={mt.id} value={mt.id}>{mt.name}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="flex gap-4">
                         <button type="submit" className="flex-1 py-2 bg-yellow-400 text-gray-900 font-bold rounded-md">Save</button>
                         <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-2 bg-gray-600 rounded-md">Cancel</button>
@@ -138,7 +131,7 @@ export default function MonManager() {
                             <div>
                                 <h4 className="font-bold text-lg text-white">{mon.name}</h4>
                                 <p className="text-sm text-gray-300">Stage: {mon.evolution_stage}</p>
-                                <p className="text-xs text-yellow-400">Evolves at: Level {mon.evolves_at_level}</p>
+                                <p className="text-xs text-yellow-400">Evolves at: Level {mon.evolves_at_level || 'N/A'}</p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -152,3 +145,4 @@ export default function MonManager() {
         </div>
     );
 }
+// END COPYING HERE

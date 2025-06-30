@@ -2,9 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download } from 'lucide-react';
 import { Modal } from './HelperComponents';
-import MediaInput from './MediaInput'; // We will still use our reusable uploader
-
-// NO MORE LOCAL API OBJECT!
+import MediaInput from './MediaInput';
 
 const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -32,7 +30,6 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
 
     const confirmDelete = () => {
         if (confirmingDelete) {
-            // This now calls the function passed down from App.js
             onDeleteCard(confirmingDelete.id);
             setConfirmingDelete(null);
         }
@@ -40,12 +37,11 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
 
     const handleSaveCard = (e) => {
         e.preventDefault();
-        // This now calls the function passed down from App.js
         onSaveCard(currentCard);
         setIsEditing(false);
         setCurrentCard(null);
     };
-    
+
     const handleExport = () => {
         const headers = Object.keys(cards[0] || {});
         if (headers.length === 0) return;
@@ -87,7 +83,7 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
                     }, {});
                     return card;
                 });
-                // This now calls the function passed down from App.js
+                // In the new architecture, onSaveCard will handle an array
                 onSaveCard(importedCards);
                 alert(`${importedCards.length} cards imported successfully!`);
             } catch (error) {
@@ -98,6 +94,7 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
         reader.readAsText(file);
         e.target.value = null;
     };
+
 
     if (isEditing) {
         return (
@@ -155,5 +152,5 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
         </div>
     );
 });
-export default CardManager;
 // END COPYING HERE
+export default CardManager;

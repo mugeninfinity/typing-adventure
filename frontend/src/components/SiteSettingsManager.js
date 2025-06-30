@@ -1,9 +1,8 @@
 // START COPYING HERE
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon } from 'lucide-react';
 import MediaInput from './MediaInput';
 
-export default function SiteSettingsManager({ settings, onSettingsChange }) {
+export default function SiteSettingsManager({ settings, onSiteSettingsChange }) {
     const [currentSettings, setCurrentSettings] = useState(settings);
 
     useEffect(() => {
@@ -12,7 +11,7 @@ export default function SiteSettingsManager({ settings, onSettingsChange }) {
 
     const handleSave = (e) => {
         e.preventDefault();
-        onSettingsChange(currentSettings);
+        onSiteSettingsChange(currentSettings);
         alert("Settings saved!");
     };
 

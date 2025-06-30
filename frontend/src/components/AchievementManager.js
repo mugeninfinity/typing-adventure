@@ -4,7 +4,7 @@ import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
 import MediaInput from './MediaInput';
 
-export default function AchievementManager({achievements, onAchievementsChange}) {
+const AchievementManager = ({ achievements, onAchievementsChange }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentAchievement, setCurrentAchievement] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
@@ -27,7 +27,6 @@ export default function AchievementManager({achievements, onAchievementsChange})
     const confirmDelete = () => {
         if(confirmingDelete) {
             const updatedAchievements = achievements.filter(a => a.id !== confirmingDelete.id);
-            // This now calls the function passed down from App.js
             onAchievementsChange(updatedAchievements);
             setConfirmingDelete(null);
         }
@@ -39,14 +38,33 @@ export default function AchievementManager({achievements, onAchievementsChange})
             ? achievements.map(a => a.id === currentAchievement.id ? currentAchievement : a)
             : [...achievements, currentAchievement];
         
-        // This now calls the function passed down from App.js
         onAchievementsChange(updated);
         setIsEditing(false);
         setCurrentAchievement(null);
     };
 
     const handleExport = () => {
-        // This function is correct and remains unchanged
+        const headers = Object.keys(achievements[0] || {});
+        if (headers.length === 0) return;
+        const csvRows = [headers.join(',')];
+        for (const achievement of achievements) {
+            const values = headers.map(header => {
+                const val = achievement[header] === null || achievement[header] === undefined ? '' : achievement[header];
+                const escaped = ('' + val).replace(/"/g, '""');
+                return `"${escaped}"`;
+            });
+            csvRows.push(values.join(','));
+        }
+        const csvData = csvRows.join('\n');
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'achievements-export.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleImport = (e) => {
@@ -101,10 +119,10 @@ export default function AchievementManager({achievements, onAchievementsChange})
                     {currentAchievement.icon_type === 'url' && (
                          <input type="text" placeholder="Image URL" value={currentAchievement.icon} onChange={e => setCurrentAchievement({...currentAchievement, icon: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
                     )}
-                     {currentAchievement.icon_type === 'emoji' && (
+                    {currentAchievement.icon_type === 'emoji' && (
                          <input type="text" placeholder="Icon (Emoji)" value={currentAchievement.icon} onChange={e => setCurrentAchievement({...currentAchievement, icon: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
                     )}
-
+                    
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-300">Type</label>
                         <select value={currentAchievement.type} onChange={e => setCurrentAchievement({...currentAchievement, type: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md">
@@ -120,10 +138,6 @@ export default function AchievementManager({achievements, onAchievementsChange})
             </div>
         );
     }
-    
-    // ... (The rest of the component's JSX remains the same)
-
-// END COPYING HERE
     
     return (
         <div>
@@ -157,5 +171,6 @@ export default function AchievementManager({achievements, onAchievementsChange})
             {confirmingDelete && <Modal onClose={() => setConfirmingDelete(null)}><div className="text-center"><h3 className="text-2xl text-white mb-4">Are you sure?</h3><p className="text-gray-300 mb-6">Do you really want to delete the achievement "{confirmingDelete.title}"?</p><div className="flex justify-center gap-4"><button onClick={() => setConfirmingDelete(null)} className="px-6 py-2 bg-gray-600 rounded-md">Cancel</button><button onClick={confirmDelete} className="px-6 py-2 bg-red-600 text-white rounded-md">Delete</button></div></div></Modal>}
         </div>
     );
-}
+};
 // END COPYING HERE
+export default AchievementManager;

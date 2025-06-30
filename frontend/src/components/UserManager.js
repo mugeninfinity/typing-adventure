@@ -9,7 +9,7 @@ export default function UserManager({ users, onUsersChange }) {
     const [confirmingDelete, setConfirmingDelete] = useState(null);
 
     const handleNew = () => {
-        setCurrentUser({ email: '', password: '', name: '', is_admin: false, unlocked_achievements: [], assigned_categories: [] });
+        setCurrentUser({ email: '', password: '', name: '', is_admin: false, assigned_categories: [] });
         setIsEditing(true);
     };
 

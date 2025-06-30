@@ -1,9 +1,8 @@
 // START COPYING HERE
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Shield, Sun, Moon, Volume2, VolumeX, Upload, Trash2, Edit, LogIn, UserPlus, User as UserIcon, Keyboard, Download, ChevronsRight, Award, Users, Settings as SettingsIcon, Home, BookOpen, Bone, Gift, ClipboardList } from 'lucide-react';
+import * as api from './components/apiCall';
 
 // Import all the components
-import * as api from './components/apiCall';
 import AuthScreen from './components/AuthScreen';
 import TypingTest from './components/TypingTest';
 import AdminPanel from './components/AdminPanel';
@@ -13,6 +12,8 @@ import { Tooltip } from './components/HelperComponents';
 import MonPage from './components/MonPage';
 import QuestPage from './components/QuestPage';
 import RewardPage from './components/RewardPage';
+import { Database, Shield, Sun, Moon, Volume2, VolumeX, Edit, LogIn, UserPlus, User as UserIcon, Keyboard, ChevronsRight, Award, Users, Settings as SettingsIcon, Home, BookOpen, Bone, Gift, ClipboardList } from 'lucide-react';
+
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -35,29 +36,18 @@ export default function App() {
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
-  useEffect(() => {
-    api.checkAuth().then(data => {
-        if (data.success) {
-            setUser(data.user);
-            setView('category_select');
-        } else {
-            setView('auth');
-        }
-    }).catch(() => setView('auth'));
-  }, []);
-
   const fetchData = async () => {
     try {
-        const [cardsData, achievementsData, siteSettingsData, usersData] = await Promise.all([
+        const [cardsData, achievementsData, usersData, siteSettingsData] = await Promise.all([
             api.getCards(),
             api.getAchievements(),
-            api.getSiteSettings(),
-            api.getUsers()
+            api.getUsers(),
+            api.getSiteSettings()
         ]);
         setCards(cardsData || []);
         setAchievements(achievementsData || []);
-        setSiteSettings(siteSettingsData || {});
         setAllUsers(usersData || []);
+        setSiteSettings(siteSettingsData || {});
 
         if (user && !user.isGuest) {
             const [historyData, journalEntries] = await Promise.all([
@@ -71,6 +61,17 @@ export default function App() {
         console.error("Failed to fetch data:", error);
     }
   };
+  
+  useEffect(() => {
+    api.checkAuth().then(data => {
+        if (data.success) {
+            setUser(data.user);
+            setView('category_select');
+        } else {
+            setView('auth');
+        }
+    }).catch(() => setView('auth'));
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -122,19 +123,32 @@ export default function App() {
     });
   };
   
-  const handleCardsChange = () => {
+  const handleSaveCard = async (cardToSave) => {
+    await api.saveCard(cardToSave);
+    fetchData();
+  };
+
+  const handleDeleteCard = async (cardId) => {
+      await api.deleteCard(cardId);
       fetchData();
   };
   
-  const handleAchievementsChange = () => {
+  const handleSaveAchievements = async (achievementsToSave) => {
+    await api.saveAchievements(achievementsToSave);
     fetchData();
   };
   
-  const handleSiteSettingsChange = () => {
-      fetchData();
+  const handleSaveSiteSettings = async (settingsToSave) => {
+    await api.saveSiteSettings(settingsToSave);
+    fetchData();
   };
   
-  const handleUsersChange = () => {
+  const handleUsersChange = async (changedUser) => {
+    if (changedUser.toDelete) {
+        await api.deleteUser(changedUser.id);
+    } else {
+        await api.saveUser(changedUser);
+    }
     fetchData();
   };
 
@@ -195,16 +209,23 @@ export default function App() {
   };
   
   const renderView = () => {
-    if (view === 'loading') {
-        return <div className="p-8 text-center">Loading...</div>;
-    }
-
-    if (!user) {
-        return <AuthScreen onLogin={handleLogin} api={api} />;
-    }
+    if (view === 'loading') return <div className="p-8 text-center">Loading...</div>;
+    if (!user) return <AuthScreen onLogin={handleLogin} api={api} />;
 
     switch(view) {
-      case 'admin': return <AdminPanel cards={cards} onCardsChange={handleCardsChange} users={allUsers} onUsersChange={handleUsersChange} achievements={achievements} onAchievementsChange={handleAchievementsChange} siteSettings={siteSettings} onSiteSettingsChange={handleSiteSettingsChange} initialCardToEdit={cardToEdit} onEditDone={() => setCardToEdit(null)} />;
+      case 'admin': 
+        return <AdminPanel 
+            cards={cards} 
+            users={allUsers}
+            achievements={achievements}
+            siteSettings={siteSettings}
+            onSaveCard={handleSaveCard}
+            onDeleteCard={handleDeleteCard}
+            onUsersChange={handleUsersChange}
+            onAchievementsChange={handleSaveAchievements}
+            onSiteSettingsChange={handleSaveSiteSettings}
+            // Add other handlers as needed
+        />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
       case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
@@ -212,7 +233,6 @@ export default function App() {
       case 'quests': return <QuestPage user={user} />;
       case 'rewards': return <RewardPage user={user} />;
       case 'card_select': 
-        // FIX: Reverted to the simpler, correct filtering logic.
         const categoryCards = cards.filter(c => c.category === selectedCategory);
         if(categoryCards.length === 0) {
             return (
