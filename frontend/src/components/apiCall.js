@@ -101,4 +101,17 @@ export const saveUserSettings = async (userId, settings) => {
         body: JSON.stringify({ settings }),
     }));
 };
+
+// Mon Types
+export const getMonTypes = async () => handleResponse(await fetch('/api/mon-types'));
+export const saveMonType = async (monType) => {
+    const url = monType.id ? `/api/mon-types/${monType.id}` : '/api/mon-types';
+    const method = monType.id ? 'PUT' : 'POST';
+    return handleResponse(await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(monType),
+    }));
+};
+export const deleteMonType = async (id) => handleResponse(await fetch(`/api/mon-types/${id}`, { method: 'DELETE' }));
 // END COPYING HERE

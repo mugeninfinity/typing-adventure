@@ -1,24 +1,13 @@
 // START COPYING HERE
 import React, { useState, useEffect } from 'react';
-import { Upload, Trash2, Edit, Bone } from 'lucide-react';
+import { Trash2, Edit, Bone } from 'lucide-react';
 import { Modal } from './HelperComponents';
-import * as api from './apiCall';
 import MediaInput from './MediaInput';
 
-export default function MonManager() {
-    const [monTypes, setMonTypes] = useState([]);
+export default function MonManager({ monTypes, onSave, onDelete }) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentMonType, setCurrentMonType] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
-
-    const fetchMonTypes = async () => {
-        const types = await api.getMonTypes();
-        setMonTypes(types);
-    };
-
-    useEffect(() => {
-        fetchMonTypes();
-    }, []);
 
     const handleNew = () => {
         setCurrentMonType({
@@ -40,18 +29,16 @@ export default function MonManager() {
         setConfirmingDelete(monType);
     };
 
-    const confirmDelete = async () => {
+    const confirmDelete = () => {
         if (confirmingDelete) {
-            await api.deleteMonType(confirmingDelete.id);
-            fetchMonTypes();
+            onDelete(confirmingDelete.id); // Call prop
             setConfirmingDelete(null);
         }
     };
 
-    const handleSave = async (e) => {
+    const handleSave = (e) => {
         e.preventDefault();
-        await api.saveMonType(currentMonType);
-        fetchMonTypes();
+        onSave(currentMonType); // Call prop
         setIsEditing(false);
         setCurrentMonType(null);
     };

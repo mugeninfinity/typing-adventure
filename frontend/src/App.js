@@ -24,6 +24,7 @@ export default function App() {
   const [achievements, setAchievements] = useState([]);
   const [siteSettings, setSiteSettings] = useState({});
   const [journalData, setJournalData] = useState([]);
+    const [monTypes, setMonTypes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [audioToPlay, setAudioToPlay] = useState(null);
@@ -36,18 +37,20 @@ export default function App() {
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
 
-  const fetchData = async () => {
+ const fetchData = async () => {
     try {
-        const [cardsData, achievementsData, usersData, siteSettingsData] = await Promise.all([
+        const [cardsData, achievementsData, usersData, siteSettingsData, monTypesData] = await Promise.all([
             api.getCards(),
             api.getAchievements(),
             api.getUsers(),
-            api.getSiteSettings()
+            api.getSiteSettings(),
+            api.getMonTypes() // Fetch Mon Types
         ]);
         setCards(cardsData || []);
         setAchievements(achievementsData || []);
         setAllUsers(usersData || []);
         setSiteSettings(siteSettingsData || {});
+        setMonTypes(monTypesData || []); // Set Mon Types state
 
         if (user && !user.isGuest) {
             const [historyData, journalEntries] = await Promise.all([
@@ -142,6 +145,10 @@ export default function App() {
     await api.saveSiteSettings(settingsToSave);
     fetchData();
   };
+    const handleSiteSettingsChange = async (settingsToSave) => {
+    await api.saveSiteSettings(settingsToSave);
+    await fetchData();
+  };
   
   const handleUsersChange = async (changedUser) => {
     if (changedUser.toDelete) {
@@ -185,6 +192,16 @@ export default function App() {
     setCurrentCardIndex(index);
     setView('game');
   };
+  // FIX: Add handlers for MonManager
+  const handleSaveMonType = async (monType) => {
+    await api.saveMonType(monType);
+    fetchData(); // Refresh all data
+  };
+
+  const handleDeleteMonType = async (monTypeId) => {
+    await api.deleteMonType(monTypeId);
+    fetchData(); // Refresh all data
+  };
   
   const renderGameView = () => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
@@ -215,16 +232,18 @@ export default function App() {
     switch(view) {
       case 'admin': 
         return <AdminPanel 
-            cards={cards} 
+            cards={cards}
             users={allUsers}
             achievements={achievements}
             siteSettings={siteSettings}
+            monTypes={monTypes} // Pass monTypes down
             onSaveCard={handleSaveCard}
             onDeleteCard={handleDeleteCard}
             onUsersChange={handleUsersChange}
             onAchievementsChange={handleSaveAchievements}
-            onSiteSettingsChange={handleSaveSiteSettings}
-            // Add other handlers as needed
+            onSiteSettingsChange={handleSiteSettingsChange}
+            onSaveMonType={handleSaveMonType} // Pass handlers down
+            onDeleteMonType={handleDeleteMonType}
         />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;

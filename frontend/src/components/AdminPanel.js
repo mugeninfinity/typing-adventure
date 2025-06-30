@@ -16,6 +16,7 @@ export default function AdminPanel({
   users, onUsersChange,
   achievements, onAchievementsChange,
   siteSettings, onSiteSettingsChange,
+  monTypes, onSaveMonType, onDeleteMonType, // Receive new props
   initialCardToEdit, onEditDone
 }) {
     const [view, setView] = useState('cards');
@@ -47,6 +48,12 @@ export default function AdminPanel({
                 return <RewardManager />;
             default:
                 return <CardManager ref={childRef} cards={cards} onSaveCard={onSaveCard} onDeleteCard={onDeleteCard} />;
+                            case 'mons':
+                return <MonManager 
+                    monTypes={monTypes} 
+                    onSave={onSaveMonType} 
+                    onDelete={onDeleteMonType} 
+                />;
         }
     };
 
