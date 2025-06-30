@@ -24,7 +24,7 @@ export default function App() {
   const [achievements, setAchievements] = useState([]);
   const [siteSettings, setSiteSettings] = useState({});
   const [journalData, setJournalData] = useState([]);
-    const [monTypes, setMonTypes] = useState([]);
+  const [monTypes, setMonTypes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [audioToPlay, setAudioToPlay] = useState(null);

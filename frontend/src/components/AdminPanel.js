@@ -41,19 +41,19 @@ export default function AdminPanel({
             case 'site':
                 return <SiteSettingsManager settings={siteSettings} onSettingsChange={onSiteSettingsChange} />;
             case 'mons':
-                return <MonManager />;
+                // Pass the new props down to MonManager
+                return <MonManager 
+                    monTypes={monTypes} 
+                    onSave={onSaveMonType} 
+                    onDelete={onDeleteMonType} 
+                />;
             case 'quests':
                 return <QuestManager />;
             case 'rewards':
                 return <RewardManager />;
             default:
                 return <CardManager ref={childRef} cards={cards} onSaveCard={onSaveCard} onDeleteCard={onDeleteCard} />;
-                            case 'mons':
-                return <MonManager 
-                    monTypes={monTypes} 
-                    onSave={onSaveMonType} 
-                    onDelete={onDeleteMonType} 
-                />;
+
         }
     };
 

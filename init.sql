@@ -124,6 +124,15 @@ CREATE TABLE IF NOT EXISTS user_rewards (
     requested_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Mon Types Table (Updated)
+CREATE TABLE IF NOT EXISTS mon_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    image_url VARCHAR(255),
+    evolution_stage VARCHAR(50) NOT NULL,
+    evolves_at_level INTEGER,
+    next_evolution_id INTEGER REFERENCES mon_types(id) ON DELETE SET NULL
+);
 
 -- Seed initial data
 INSERT INTO

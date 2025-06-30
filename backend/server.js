@@ -475,6 +475,60 @@ app.get('/api/users/:id/mons', async (req, res) => {
     }
 });
 
+// MON TYPES
+app.get('/api/mon-types', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM mon_types ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/mon-types', async (req, res) => {
+    const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = req.body;
+    try {
+        // FIX: The query now correctly handles potentially null values from the form.
+        const result = await pool.query(
+            'INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/mon-types/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = req.body;
+    try {
+        // FIX: The query now correctly handles potentially null values from the form.
+        const result = await pool.query(
+            'UPDATE mon_types SET name = $1, image_url = $2, evolution_stage = $3, evolves_at_level = $4, next_evolution_id = $5 WHERE id = $6 RETURNING *',
+            [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/mon-types/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM mon_types WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 // QUESTS
 app.get('/api/quests', async (req, res) => {
     try {
@@ -583,7 +637,7 @@ const checkAndAwardAchievements = async (client, userId, latestStats) => {
         return newlyUnlocked;
     } catch (err) {
         console.error("Error checking achievements:", err);
-        return []; // Return empty array on error
+        return [];
     }
 };
 
