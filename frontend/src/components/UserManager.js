@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { UserPlus, Edit, Trash2, User as UserIcon } from 'lucide-react';
 import { Modal } from './HelperComponents';
 
-export default function UserManager({ users, onUsersChange }) {
+// FIX: The component now expects `onSave` as a prop
+export default function UserManager({ users, onSave }) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
@@ -24,14 +25,16 @@ export default function UserManager({ users, onUsersChange }) {
 
     const confirmDelete = () => {
         if(confirmingDelete) {
-            onUsersChange({ ...confirmingDelete, toDelete: true });
+            // FIX: Uses the `onSave` prop, passing a special flag
+            onSave({ ...confirmingDelete, toDelete: true });
             setConfirmingDelete(null);
         }
     };
 
     const handleSave = (e) => {
         e.preventDefault();
-        onUsersChange(currentUser);
+        // FIX: Uses the `onSave` prop
+        onSave(currentUser);
         setIsEditing(false);
         setCurrentUser(null);
     };

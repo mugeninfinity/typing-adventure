@@ -4,7 +4,7 @@ import { Upload, Trash2, Edit, Download } from 'lucide-react';
 import { Modal } from './HelperComponents';
 import MediaInput from './MediaInput';
 
-const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) => {
+const CardManager = React.forwardRef(({ cards, onSave, onDelete }, ref) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentCard, setCurrentCard] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
@@ -30,18 +30,18 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
 
     const confirmDelete = () => {
         if (confirmingDelete) {
-            onDeleteCard(confirmingDelete.id);
+            onDelete(confirmingDelete.id);
             setConfirmingDelete(null);
         }
     };
 
     const handleSaveCard = (e) => {
         e.preventDefault();
-        onSaveCard(currentCard);
+        onSave(currentCard);
         setIsEditing(false);
         setCurrentCard(null);
     };
-
+    
     const handleExport = () => {
         const headers = Object.keys(cards[0] || {});
         if (headers.length === 0) return;
@@ -83,8 +83,7 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
                     }, {});
                     return card;
                 });
-                // In the new architecture, onSaveCard will handle an array
-                onSaveCard(importedCards);
+                onSave(importedCards);
                 alert(`${importedCards.length} cards imported successfully!`);
             } catch (error) {
                 alert("Failed to import CSV. Please check the file format.");
@@ -152,5 +151,7 @@ const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) 
         </div>
     );
 });
-// END COPYING HERE
+
+// FIX: Add this line to ensure the component is exported as a default.
 export default CardManager;
+// END COPYING HERE

@@ -14,75 +14,75 @@ import QuestPage from './components/QuestPage';
 import RewardPage from './components/RewardPage';
 import { Database, Shield, Sun, Moon, Volume2, VolumeX, Edit, LogIn, UserPlus, User as UserIcon, Keyboard, ChevronsRight, Award, Users, Settings as SettingsIcon, Home, BookOpen, Bone, Gift, ClipboardList } from 'lucide-react';
 
-
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [view, setView] = useState('loading');
-  const [cards, setCards] = useState([]);
-  const [typingHistory, setTypingHistory] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
-  const [achievements, setAchievements] = useState([]);
-  const [siteSettings, setSiteSettings] = useState({});
-  const [journalData, setJournalData] = useState([]);
-  const [monTypes, setMonTypes] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [audioToPlay, setAudioToPlay] = useState(null);
-  const [settings, setSettings] = useState({ 
-    isDarkMode: true, 
-    soundEnabled: false, 
-    showKeyboard: true 
-  });
-  const [notificationQueue, setNotificationQueue] = useState([]);
-  const audioRef = useRef(null);
-  const [cardToEdit, setCardToEdit] = useState(null);
-  const [adminView, setAdminView] = useState('cards');
+   const [user, setUser] = useState(null);
+    const [view, setView] = useState('loading');
+    const [cards, setCards] = useState([]);
+    const [typingHistory, setTypingHistory] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
+    const [achievements, setAchievements] = useState([]);
+    const [siteSettings, setSiteSettings] = useState({});
+    const [journalData, setJournalData] = useState([]);
+    const [monTypes, setMonTypes] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [currentCardIndex, setCurrentCardIndex] = useState(0);
+    const [audioToPlay, setAudioToPlay] = useState(null);
+    const [settings, setSettings] = useState({ 
+        isDarkMode: true, 
+        soundEnabled: false, 
+        showKeyboard: true 
+    });
+    const [notificationQueue, setNotificationQueue] = useState([]);
+    const audioRef = useRef(null);
+    const [cardToEdit, setCardToEdit] = useState(null);
+    const [adminView, setAdminView] = useState('cards');
 
-
- const fetchData = async () => {
-    try {
-        const [cardsData, achievementsData, usersData, siteSettingsData, monTypesData] = await Promise.all([
+    // --- DATA FETCHING ---
+    const fetchData = async () => {
+        try {
+            const [cardsData, achievementsData, usersData, siteSettingsData, monTypesData] = await Promise.all([
                 api.getCards(),
                 api.getAchievements(),
                 api.getUsers(),
                 api.getSiteSettings(),
                 api.getMonTypes()
-        ]);
+            ]);
             setCards(cardsData || []);
             setAchievements(achievementsData || []);
             setAllUsers(usersData || []);
             setSiteSettings(siteSettingsData || {});
             setMonTypes(monTypesData || []);
 
-        if (user && !user.isGuest) {
-            const [historyData, journalEntries] = await Promise.all([
-                api.getHistory(user.id),
-                api.getJournal(user.id)
-            ]);
-            setTypingHistory(historyData || []);
-            setJournalData(journalEntries || []);
+            if (user && !user.isGuest) {
+                const [historyData, journalEntries] = await Promise.all([
+                    api.getHistory(user.id),
+                    api.getJournal(user.id)
+                ]);
+                setTypingHistory(historyData || []);
+                setJournalData(journalEntries || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
         }
-    } catch (error) {
-        console.error("Failed to fetch data:", error);
-    }
-  };
+    };
   
-  useEffect(() => {
-    api.checkAuth().then(data => {
-        if (data.success) {
-            setUser(data.user);
-            setView('category_select');
-        } else {
-            setView('auth');
-        }
-    }).catch(() => setView('auth'));
-  }, []);
+  
+    useEffect(() => {
+        api.checkAuth().then(data => {
+            if (data.success) {
+                setUser(data.user);
+                setView('category_select');
+            } else {
+                setView('auth');
+            }
+        }).catch(() => setView('auth'));
+    }, []);
 
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
+    useEffect(() => {
+        if (user) {
+            fetchData();
+        }
+    }, [user]);
   
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.isDarkMode);
@@ -114,52 +114,74 @@ export default function App() {
     }
   }, [notificationQueue]);
 
-  const handleLogin = (data) => {
-    if (data.success) {
-        setUser(data.user);
-        setView('category_select');
-    }
-  };
+    const handleLogin = (data) => {
+        if (data.success) {
+            setUser(data.user);
+            setView('category_select');
+        }
+    };
 
-  const handleLogout = () => {
-    api.logout().then(() => {
-        setUser(null);
-        setView('auth');
-    });
-  };
+    const handleLogout = () => {
+        api.logout().then(() => {
+            setUser(null);
+            setView('auth');
+        });
+    };
   
-  const handleSaveCard = async (cardToSave) => {
-    await api.saveCard(cardToSave);
-    fetchData();
-  };
+    const handleSaveCard = async (card) => {
+        if (Array.isArray(card)) {
+            await Promise.all(card.map(api.saveCard));
+        } else {
+            await api.saveCard(card);
+        }
+        await fetchData();
+    };
 
-  const handleDeleteCard = async (cardId) => {
-      await api.deleteCard(cardId);
-      fetchData();
-  };
+    const handleDeleteCard = async (cardId) => {
+        await api.deleteCard(cardId);
+        await fetchData();
+    };
   
-  const handleSaveAchievements = async (achievementsToSave) => {
-    await api.saveAchievements(achievementsToSave);
-    fetchData();
-  };
+    const handleSaveAchievements = async (achievementsToSave) => {
+        await api.saveAchievements(achievementsToSave);
+        await fetchData();
+    };
+    
+    const handleUsersChange = async (changedUser) => {
+        if (changedUser.toDelete) {
+            await api.deleteUser(changedUser.id);
+        } else {
+            await api.saveUser(changedUser);
+        }
+        await fetchData();
+    };
   
-  const handleSaveSiteSettings = async (settingsToSave) => {
-    await api.saveSiteSettings(settingsToSave);
-    fetchData();
-  };
     const handleSiteSettingsChange = async (settingsToSave) => {
-    await api.saveSiteSettings(settingsToSave);
-    await fetchData();
-  };
-  
-  const handleUsersChange = async (changedUser) => {
-    if (changedUser.toDelete) {
-        await api.deleteUser(changedUser.id);
-    } else {
-        await api.saveUser(changedUser);
-    }
-    fetchData();
-  };
+        await api.saveSiteSettings(settingsToSave);
+        await fetchData();
+    };
+
+    const handleSaveMonType = async (monType) => {
+        await api.saveMonType(monType);
+        await fetchData();
+    };
+
+    const handleDeleteMonType = async (monTypeId) => {
+        await api.deleteMonType(monTypeId);
+        await fetchData();
+    };
+
+    const handleDirectEdit = (card) => {
+        setCardToEdit(card);
+        setAdminView('cards');
+        setView('admin');
+    };
+    
+
+        const handleSelectCard = (index) => {
+        setCurrentCardIndex(index);
+        setView('game');
+    };
 
   const handleComplete = (stats) => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
@@ -190,26 +212,7 @@ export default function App() {
     });
   };
   
-  const handleSelectCard = (index) => {
-    setCurrentCardIndex(index);
-    setView('game');
-  };
-  // FIX: Add handlers for MonManager
-  const handleSaveMonType = async (monType) => {
-    await api.saveMonType(monType);
-    fetchData(); // Refresh all data
-  };
 
-  const handleDeleteMonType = async (monTypeId) => {
-    await api.deleteMonType(monTypeId);
-    fetchData(); // Refresh all data
-  };
-
-    const handleDirectEdit = (card) => {
-    setCardToEdit(card);
-    setAdminView('cards'); // Tell the admin panel to show the CardManager
-    setView('admin');      // Switch the main app view to the admin panel
-  };
   
   const renderGameView = () => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
@@ -240,54 +243,56 @@ export default function App() {
 
     switch(view) {
       case 'admin': 
-            return <AdminPanel 
+        return <AdminPanel 
                 cards={cards} 
                 users={allUsers}
                 achievements={achievements}
                 siteSettings={siteSettings}
                 monTypes={monTypes}
+                // FIX: Pass down all the correct handlers with consistent names
+                onSaveCard={handleSaveCard}
+                onDeleteCard={handleDeleteCard}
+                onUsersChange={handleUsersChange}
+                onSaveAchievements={handleSaveAchievements}
+                onSiteSettingsChange={handleSiteSettingsChange}
+                onSaveMonType={handleSaveMonType}
+                onDeleteMonType={handleDeleteMonType}
                 activeView={adminView}
                 onNavigate={setAdminView}
                 initialCardToEdit={cardToEdit} 
                 onEditDone={() => setCardToEdit(null)}
-                onSaveCard={handleSaveCard}
-                onDeleteCard={handleDeleteCard}
-                onUsersChange={handleUsersChange}
-                onAchievementsChange={handleSaveAchievements}
-                onSiteSettingsChange={handleSiteSettingsChange}
-                onSaveMonType={handleSaveMonType}
-                onDeleteMonType={handleDeleteMonType}
-            />;
+        />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
       case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
       case 'mons': return <MonPage user={user} />;
       case 'quests': return <QuestPage user={user} />;
       case 'rewards': return <RewardPage user={user} />;
-      case 'card_select': 
-        const categoryCards = cards.filter(c => c.category === selectedCategory);
-        if(categoryCards.length === 0) {
+                case 'card_select': 
+            const categoryCards = cards.filter(c => c.category === selectedCategory);
+            if(categoryCards.length === 0) {
+                return (
+                    <div className="p-8">
+                        <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
+                        <p className="text-center">This category has no cards yet.</p>
+                        <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
+                    </div>
+                );
+            }
             return (
                 <div className="p-8">
                     <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
-                    <p className="text-center">This category has no cards yet.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {categoryCards.map((card, index) => (
+                            // This onClick handler will now correctly find the function
+                            <div key={card.id} onClick={() => handleSelectCard(index)} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3>
+                                <p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p>
+                            </div>
+                        ))}
+                    </div>
                     <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
                 </div>
-            );
-        }
-        return (
-            <div className="p-8">
-                <h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Category: {selectedCategory}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {categoryCards.map((card, index) => (
-                        <div key={card.id} onClick={() => handleSelectCard(index)} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{card.title}</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mt-2">{card.text_content.substring(0,120)}...</p>
-                        </div>
-                    ))}
-                </div>
-                <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
-            </div>
         );
       case 'category_select':
         const allCategories = [...new Set(cards.map(c => c.category || 'Uncategorized'))];

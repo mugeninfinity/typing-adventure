@@ -2,23 +2,30 @@
 import React, { useState } from 'react';
 import { LogIn, UserPlus, User as UserIcon } from 'lucide-react';
 
+// FIX: The component now receives 'api' as a prop, not 'mockApi'.
 export default function AuthScreen({ onLogin, api }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleGuestLogin = () => {
-    onLogin({ success: true, user: { name: 'Guest', isAdmin: false, isGuest: true, unlockedAchievements: [] }});
+    onLogin({ success: true, user: { name: 'Guest', isAdmin: false, isGuest: true, unlocked_achievements: [] }});
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const response = await api.login(identifier, password);
-    if (response.success) {
-      onLogin(response);
-    } else {
-      setError(response.message || 'Authentication failed.');
+    try {
+        // FIX: Use the new, reliable api object.
+        const response = await api.login(identifier, password);
+        if (response.success) {
+          onLogin(response);
+        } else {
+          setError(response.message || 'Authentication failed.');
+        }
+    } catch (err) {
+        setError('Login failed. The server may be down.');
+        console.error(err);
     }
   };
 

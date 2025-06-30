@@ -1,8 +1,8 @@
 // START COPYING HERE
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Users, Award, Settings as SettingsIcon, Bone, ClipboardList, Gift } from 'lucide-react';
 
-// FIX: Import all the manager components from their own dedicated files.
+// Import all manager components
 import CardManager from './CardManager';
 import UserManager from './UserManager';
 import AchievementManager from './AchievementManager';
@@ -11,13 +11,10 @@ import MonManager from './MonManager';
 import QuestManager from './QuestManager';
 import RewardManager from './RewardManager';
 
-// FIX: AdminPanel is now a "dumb" component. 
-// It receives all data and handler functions as props from App.js.
-// It no longer contains any local API logic.
 export default function AdminPanel({
   cards, onSaveCard, onDeleteCard,
   users, onUsersChange,
-  achievements, onSaveAchievements,
+  achievements, onAchievementsChange, // This prop is now received
   siteSettings, onSiteSettingsChange,
   monTypes, onSaveMonType, onDeleteMonType,
   initialCardToEdit, onEditDone,
@@ -27,22 +24,24 @@ export default function AdminPanel({
 
     useEffect(() => {
         if (initialCardToEdit && childRef.current?.startEditing) {
-            onNavigate('cards'); // Ensure the correct view is shown
+            onNavigate('cards');
             childRef.current.startEditing(initialCardToEdit);
             onEditDone();
         }
     }, [initialCardToEdit, onEditDone, onNavigate]);
 
-    
-    // This function acts as a router to show the correct manager component.
-   const renderManager = () => {
+    const renderManager = () => {
         switch (activeView) {
             case 'cards':
+                // Pass the correct props down to CardManager
                 return <CardManager ref={childRef} cards={cards} onSave={onSaveCard} onDelete={onDeleteCard} />;
             case 'users':
+                // Pass the correct props down to UserManager
                 return <UserManager users={users} onSave={onUsersChange} />;
             case 'achievements':
-                return <AchievementManager achievements={achievements} onSave={onSaveAchievements} />;
+                // FIX: The onAchievementsChange prop is now correctly passed to the AchievementManager
+                // We rename it to "onSave" for consistency within the child component.
+                return <AchievementManager achievements={achievements} onSave={onAchievementsChange} />;
             case 'site':
                 return <SiteSettingsManager settings={siteSettings} onSave={onSiteSettingsChange} />;
             case 'mons':
@@ -60,7 +59,6 @@ export default function AdminPanel({
         <div className="flex min-h-screen">
             <aside className="w-64 bg-gray-100 dark:bg-gray-800 p-4 flex-shrink-0">
                 <nav className="space-y-2">
-                    {/* FIX: The buttons now call the onNavigate function passed down from App.js */}
                     <button onClick={() => onNavigate('cards')} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-md ${activeView === 'cards' ? 'bg-yellow-400 text-gray-900' : ''}`}><Shield size={20}/>Cards</button>
                     <button onClick={() => onNavigate('users')} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-md ${activeView === 'users' ? 'bg-yellow-400 text-gray-900' : ''}`}><Users size={20}/>Users</button>
                     <button onClick={() => onNavigate('achievements')} className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-md ${activeView === 'achievements' && 'bg-yellow-400 text-gray-900'}`}><Award size={20}/>Achievements</button>
