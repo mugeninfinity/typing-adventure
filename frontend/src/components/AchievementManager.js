@@ -4,18 +4,6 @@ import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
 import MediaInput from './MediaInput';
 
-const api = {
-    // This API call is specific to the manager and will now be used directly
-    saveAchievements: async (achievements) => {
-        const response = await fetch('/api/achievements', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(achievements),
-        });
-        return response.json();
-    },
-};
-
 export default function AchievementManager({achievements, onAchievementsChange}) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentAchievement, setCurrentAchievement] = useState(null);
@@ -39,11 +27,9 @@ export default function AchievementManager({achievements, onAchievementsChange})
     const confirmDelete = () => {
         if(confirmingDelete) {
             const updatedAchievements = achievements.filter(a => a.id !== confirmingDelete.id);
-            // Directly call the API to save the change
-            api.saveAchievements(updatedAchievements).then(() => {
-                onAchievementsChange(); // Then trigger a refresh
-                setConfirmingDelete(null);
-            });
+            // This now calls the function passed down from App.js
+            onAchievementsChange(updatedAchievements);
+            setConfirmingDelete(null);
         }
     };
 
@@ -53,12 +39,10 @@ export default function AchievementManager({achievements, onAchievementsChange})
             ? achievements.map(a => a.id === currentAchievement.id ? currentAchievement : a)
             : [...achievements, currentAchievement];
         
-        // Directly call the API to save the change
-        api.saveAchievements(updated).then(() => {
-            onAchievementsChange(); // Then trigger a refresh
-            setIsEditing(false);
-            setCurrentAchievement(null);
-        });
+        // This now calls the function passed down from App.js
+        onAchievementsChange(updated);
+        setIsEditing(false);
+        setCurrentAchievement(null);
     };
 
     const handleExport = () => {
@@ -82,8 +66,7 @@ export default function AchievementManager({achievements, onAchievementsChange})
                     }, {});
                     return achievement;
                 });
-                // Directly call the API to save the change
-                api.saveAchievements([...achievements, ...importedAchievements]).then(onAchievementsChange);
+                onAchievementsChange([...achievements, ...importedAchievements]);
                 alert(`${importedAchievements.length} achievements imported successfully!`);
             } catch (error) {
                 alert("Failed to import CSV. Please check the file format.");

@@ -1,3 +1,4 @@
+// START COPYING HERE
 import React, { useState } from 'react';
 import { UserPlus, Edit, Trash2, User as UserIcon } from 'lucide-react';
 import { Modal } from './HelperComponents';
@@ -82,3 +83,4 @@ export default function UserManager({ users, onUsersChange }) {
         </div>
     );
 }
+// END COPYING HERE

@@ -2,40 +2,11 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Trash2, Edit, Download } from 'lucide-react';
 import { Modal } from './HelperComponents';
-import MediaInput from './MediaInput'; // Import the corrected media input
+import MediaInput from './MediaInput'; // We will still use our reusable uploader
 
-const MediaInput = ({ name, value, onChange }) => {
-    const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-            const data = await uploadFile(file);
-            if (data.success) {
-                onChange(name, data.path);
-            }
-        } catch (error) {
-            console.error("Error uploading file:", error);
-            alert("Error uploading file.");
-        }
-    };
+// NO MORE LOCAL API OBJECT!
 
-const api = {
-    saveCard: async (card) => {
-        const url = card.id ? `/api/cards/${card.id}` : '/api/cards';
-        const method = card.id ? 'PUT' : 'POST';
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(card),
-        });
-        return response.json();
-    },
-    deleteCard: async (id) => {
-        await fetch(`/api/cards/${id}`, { method: 'DELETE' });
-    },
-};
-
-const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
+const CardManager = React.forwardRef(({ cards, onSaveCard, onDeleteCard }, ref) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentCard, setCurrentCard] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
@@ -59,29 +30,18 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
         setConfirmingDelete(card);
     };
 
-    const confirmDelete = async () => {
+    const confirmDelete = () => {
         if (confirmingDelete) {
-            try {
-                const response = await fetch(`/api/cards/${confirmingDelete.id}`, {
-                    method: 'DELETE',
-                });
-                const result = await response.json();
-                if (!result.success) {
-                    throw new Error(result.message || 'Failed to delete card');
-                }
-                onCardsChange(); 
-                setConfirmingDelete(null);
-                alert('Card deleted successfully!');
-            } catch (error) {
-                console.error("Error deleting card:", error);
-                alert("Error deleting card. See console for details.");
-            }
+            // This now calls the function passed down from App.js
+            onDeleteCard(confirmingDelete.id);
+            setConfirmingDelete(null);
         }
     };
 
     const handleSaveCard = (e) => {
         e.preventDefault();
-        onSave(currentCard); // Simply pass the card data up to the parent
+        // This now calls the function passed down from App.js
+        onSaveCard(currentCard);
         setIsEditing(false);
         setCurrentCard(null);
     };
@@ -125,10 +85,10 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
                         obj[header] = values[index] || '';
                         return obj;
                     }, {});
-                    card.id = parseInt(card.id) || Date.now() + Math.random();
                     return card;
                 });
-                onCardsChange(importedCards);
+                // This now calls the function passed down from App.js
+                onSaveCard(importedCards);
                 alert(`${importedCards.length} cards imported successfully!`);
             } catch (error) {
                 alert("Failed to import CSV. Please check the file format.");
@@ -138,8 +98,6 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
         reader.readAsText(file);
         e.target.value = null;
     };
-
-
 
     if (isEditing) {
         return (
@@ -197,5 +155,5 @@ const CardManager = React.forwardRef(({ cards, onCardsChange }, ref) => {
         </div>
     );
 });
-
 export default CardManager;
+// END COPYING HERE

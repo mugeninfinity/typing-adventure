@@ -1,6 +1,6 @@
 // START COPYING HERE
 import React from 'react';
-import { uploadFile } from './components/apiCall'; // Use our new API service
+import { uploadFile } from './apiCall'; // Use our new API service
 
 export default function MediaInput({ name, value, onChange }) {
     const handleFileChange = async (e) => {

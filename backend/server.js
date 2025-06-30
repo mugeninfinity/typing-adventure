@@ -55,7 +55,6 @@ app.use(session({
 }));
 
 // --- API ROUTES ---
-
 // AUTH
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
@@ -108,33 +107,67 @@ app.get('/api/auth/check', (req, res) => {
     }
 });
 
-
-
 // USERS
-app.post('/api/auth/login', async (req, res) => {
-    const { identifier, password } = req.body;
+app.get('/api/users', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM users WHERE email = $1 OR name = $1', [identifier]);
-        if (result.rows.length === 0) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials.' });
-        }
-        
-        const dbUser = result.rows[0];
-        const passwordMatch = await bcrypt.compare(password, dbUser.password);
+        const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
-        if (passwordMatch) {
-            const userPayload = {
-                id: dbUser.id,
-                email: dbUser.email,
-                name: dbUser.name,
-                isAdmin: dbUser.is_admin,
-                unlockedAchievements: dbUser.unlocked_achievements,
-                assignedCategories: dbUser.assigned_categories,
-            };
-            res.json({ success: true, user: userPayload });
+app.post('/api/users', async (req, res) => {
+    const { email, password, name, is_admin, assigned_categories } = req.body;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    try {
+        const result = await pool.query(
+            'INSERT INTO users (email, password, name, is_admin, assigned_categories) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [email, hashedPassword, name, is_admin, assigned_categories]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { email, name, is_admin, assigned_categories, password } = req.body;
+    
+    try {
+        let result;
+        if (password) {
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            result = await pool.query(
+                'UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4, password = $5 WHERE id = $6 RETURNING *',
+                [email, name, is_admin, assigned_categories, hashedPassword, id]
+            );
         } else {
-            res.status(401).json({ success: false, message: 'Invalid credentials.' });
+            result = await pool.query(
+                'UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4 WHERE id = $5 RETURNING *',
+                [email, name, is_admin, assigned_categories, id]
+            );
         }
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        res.status(204).send();
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
