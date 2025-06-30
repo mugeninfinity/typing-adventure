@@ -4,6 +4,11 @@ import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
 import MediaInput from './MediaInput';
 
+export default function AchievementManager({ achievements, onSave }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentAchievement, setCurrentAchievement] = useState(null);
+    const [confirmingDelete, setConfirmingDelete] = useState(null);
+
 const AchievementManager = ({ achievements, onAchievementsChange }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentAchievement, setCurrentAchievement] = useState(null);
@@ -27,7 +32,7 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
     const confirmDelete = () => {
         if(confirmingDelete) {
             const updatedAchievements = achievements.filter(a => a.id !== confirmingDelete.id);
-            onAchievementsChange(updatedAchievements);
+            onSave(updatedAchievements); // Call the onSave prop
             setConfirmingDelete(null);
         }
     };
@@ -38,7 +43,7 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
             ? achievements.map(a => a.id === currentAchievement.id ? currentAchievement : a)
             : [...achievements, currentAchievement];
         
-        onAchievementsChange(updated);
+        onSave(updated); // Call the onSave prop
         setIsEditing(false);
         setCurrentAchievement(null);
     };
@@ -171,6 +176,7 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
             {confirmingDelete && <Modal onClose={() => setConfirmingDelete(null)}><div className="text-center"><h3 className="text-2xl text-white mb-4">Are you sure?</h3><p className="text-gray-300 mb-6">Do you really want to delete the achievement "{confirmingDelete.title}"?</p><div className="flex justify-center gap-4"><button onClick={() => setConfirmingDelete(null)} className="px-6 py-2 bg-gray-600 rounded-md">Cancel</button><button onClick={confirmDelete} className="px-6 py-2 bg-red-600 text-white rounded-md">Delete</button></div></div></Modal>}
         </div>
     );
+}
 };
 // END COPYING HERE
-export default AchievementManager;
+// export default AchievementManager;

@@ -36,21 +36,23 @@ export default function App() {
   const [notificationQueue, setNotificationQueue] = useState([]);
   const audioRef = useRef(null);
   const [cardToEdit, setCardToEdit] = useState(null);
+  const [adminView, setAdminView] = useState('cards');
+
 
  const fetchData = async () => {
     try {
         const [cardsData, achievementsData, usersData, siteSettingsData, monTypesData] = await Promise.all([
-            api.getCards(),
-            api.getAchievements(),
-            api.getUsers(),
-            api.getSiteSettings(),
-            api.getMonTypes() // Fetch Mon Types
+                api.getCards(),
+                api.getAchievements(),
+                api.getUsers(),
+                api.getSiteSettings(),
+                api.getMonTypes()
         ]);
-        setCards(cardsData || []);
-        setAchievements(achievementsData || []);
-        setAllUsers(usersData || []);
-        setSiteSettings(siteSettingsData || {});
-        setMonTypes(monTypesData || []); // Set Mon Types state
+            setCards(cardsData || []);
+            setAchievements(achievementsData || []);
+            setAllUsers(usersData || []);
+            setSiteSettings(siteSettingsData || {});
+            setMonTypes(monTypesData || []);
 
         if (user && !user.isGuest) {
             const [historyData, journalEntries] = await Promise.all([
@@ -202,6 +204,12 @@ export default function App() {
     await api.deleteMonType(monTypeId);
     fetchData(); // Refresh all data
   };
+
+    const handleDirectEdit = (card) => {
+    setCardToEdit(card);
+    setAdminView('cards'); // Tell the admin panel to show the CardManager
+    setView('admin');      // Switch the main app view to the admin panel
+  };
   
   const renderGameView = () => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
@@ -216,7 +224,8 @@ export default function App() {
         card={card}
         onComplete={handleComplete}
         onSkip={() => setCurrentCardIndex((currentCardIndex + 1) % categoryCards.length)}
-        onDirectEdit={(c) => setCardToEdit(c)}
+        // FIX: Use the new handler for direct editing
+        onDirectEdit={handleDirectEdit}
         settings={settings}
         siteSettings={siteSettings}
         prevBest={prevBest}
@@ -231,20 +240,24 @@ export default function App() {
 
     switch(view) {
       case 'admin': 
-        return <AdminPanel 
-            cards={cards}
-            users={allUsers}
-            achievements={achievements}
-            siteSettings={siteSettings}
-            monTypes={monTypes} // Pass monTypes down
-            onSaveCard={handleSaveCard}
-            onDeleteCard={handleDeleteCard}
-            onUsersChange={handleUsersChange}
-            onAchievementsChange={handleSaveAchievements}
-            onSiteSettingsChange={handleSiteSettingsChange}
-            onSaveMonType={handleSaveMonType} // Pass handlers down
-            onDeleteMonType={handleDeleteMonType}
-        />;
+            return <AdminPanel 
+                cards={cards} 
+                users={allUsers}
+                achievements={achievements}
+                siteSettings={siteSettings}
+                monTypes={monTypes}
+                activeView={adminView}
+                onNavigate={setAdminView}
+                initialCardToEdit={cardToEdit} 
+                onEditDone={() => setCardToEdit(null)}
+                onSaveCard={handleSaveCard}
+                onDeleteCard={handleDeleteCard}
+                onUsersChange={handleUsersChange}
+                onAchievementsChange={handleSaveAchievements}
+                onSiteSettingsChange={handleSiteSettingsChange}
+                onSaveMonType={handleSaveMonType}
+                onDeleteMonType={handleDeleteMonType}
+            />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
       case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;

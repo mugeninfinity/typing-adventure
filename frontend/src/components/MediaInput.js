@@ -1,16 +1,17 @@
 // START COPYING HERE
 import React from 'react';
-import { uploadFile } from './apiCall'; // Use our new API service
-import * as api from './apiCall';
+// FIX: Import the uploadFile function from your apiCall.js service
+import { uploadFile } from './apiCall';
 
 export default function MediaInput({ name, value, onChange }) {
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         try {
+            // This now correctly calls the imported function
             const data = await uploadFile(file);
             if (data.success) {
-                onChange(name, data.path); // Pass the server path back to the parent
+                onChange(name, data.path);
             }
         } catch (error) {
             console.error("Error uploading file:", error);

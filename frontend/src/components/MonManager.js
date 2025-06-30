@@ -31,14 +31,14 @@ export default function MonManager({ monTypes, onSave, onDelete }) {
 
     const confirmDelete = () => {
         if (confirmingDelete) {
-            onDelete(confirmingDelete.id); // Call prop
+            onDelete(confirmingDelete.id); 
             setConfirmingDelete(null);
         }
     };
 
     const handleSave = (e) => {
         e.preventDefault();
-        onSave(currentMonType); // Call prop
+        onSave(currentMonType); 
         setIsEditing(false);
         setCurrentMonType(null);
     };
