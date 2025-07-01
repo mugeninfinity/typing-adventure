@@ -14,7 +14,7 @@ import RewardManager from './RewardManager';
 export default function AdminPanel({
   cards, onSaveCard, onDeleteCard,
   users, onUsersChange,
-  achievements, onAchievementsChange, // This prop is now received
+  achievements, onSaveAchievements, // This prop is now received
   siteSettings, onSiteSettingsChange,
   monTypes, onSaveMonType, onDeleteMonType,
   initialCardToEdit, onEditDone,
@@ -41,7 +41,7 @@ export default function AdminPanel({
             case 'achievements':
                 // FIX: The onAchievementsChange prop is now correctly passed to the AchievementManager
                 // We rename it to "onSave" for consistency within the child component.
-                return <AchievementManager achievements={achievements} onSave={onAchievementsChange} />;
+                return <AchievementManager achievements={achievements} onSave={onSaveAchievements} />;
             case 'site':
                 return <SiteSettingsManager settings={siteSettings} onSave={onSiteSettingsChange} />;
             case 'mons':

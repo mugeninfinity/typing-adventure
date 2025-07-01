@@ -20,6 +20,7 @@ export default function App() {
     const [cards, setCards] = useState([]);
     const [typingHistory, setTypingHistory] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
+      const [allMons, setAllMons] = useState([]);
     const [achievements, setAchievements] = useState([]);
     const [siteSettings, setSiteSettings] = useState({});
     const [journalData, setJournalData] = useState([]);
@@ -40,18 +41,20 @@ export default function App() {
     // --- DATA FETCHING ---
     const fetchData = async () => {
         try {
-            const [cardsData, achievementsData, usersData, siteSettingsData, monTypesData] = await Promise.all([
+            const [cardsData, achievementsData, usersData, siteSettingsData, monTypesData, allMonsData] = await Promise.all([
                 api.getCards(),
                 api.getAchievements(),
                 api.getUsers(),
                 api.getSiteSettings(),
-                api.getMonTypes()
+                api.getMonTypes(),
+                api.getAllMons()
             ]);
             setCards(cardsData || []);
             setAchievements(achievementsData || []);
             setAllUsers(usersData || []);
             setSiteSettings(siteSettingsData || {});
             setMonTypes(monTypesData || []);
+            setAllMons(allMonsData || []);
 
             if (user && !user.isGuest) {
                 const [historyData, journalEntries] = await Promise.all([
@@ -65,7 +68,6 @@ export default function App() {
             console.error("Failed to fetch data:", error);
         }
     };
-  
   
     useEffect(() => {
         api.checkAuth().then(data => {
@@ -171,6 +173,11 @@ export default function App() {
         await fetchData();
     };
 
+  const handleDeleteMon = async (monId) => {
+    await api.deleteMon(monId);
+    await fetchData(); // Refresh all data after deleting
+  };
+
     const handleDirectEdit = (card) => {
         setCardToEdit(card);
         setAdminView('cards');
@@ -237,35 +244,38 @@ export default function App() {
     );
   };
   
-  const renderView = () => {
-    if (view === 'loading') return <div className="p-8 text-center">Loading...</div>;
-    if (!user) return <AuthScreen onLogin={handleLogin} api={api} />;
-
-    switch(view) {
-      case 'admin': 
-        return <AdminPanel 
-                cards={cards} 
-                users={allUsers}
-                achievements={achievements}
-                siteSettings={siteSettings}
-                monTypes={monTypes}
-                // FIX: Pass down all the correct handlers with consistent names
-                onSaveCard={handleSaveCard}
-                onDeleteCard={handleDeleteCard}
-                onUsersChange={handleUsersChange}
-                onSaveAchievements={handleSaveAchievements}
-                onSiteSettingsChange={handleSiteSettingsChange}
-                onSaveMonType={handleSaveMonType}
-                onDeleteMonType={handleDeleteMonType}
-                activeView={adminView}
-                onNavigate={setAdminView}
-                initialCardToEdit={cardToEdit} 
-                onEditDone={() => setCardToEdit(null)}
-        />;
+      const renderView = () => {
+        if (view === 'loading') return <div className="p-8 text-center">Loading...</div>;
+    if (!user) {
+        return <AuthScreen onLogin={handleLogin} api={api} />;
+    }
+        switch(view) {
+            case 'admin': 
+                return <AdminPanel 
+                    cards={cards} 
+                    users={allUsers}
+                    achievements={achievements}
+                    siteSettings={siteSettings}
+                    monTypes={monTypes}
+                    allMons={allMons}
+                    onSaveCard={handleSaveCard}
+                    onDeleteCard={handleDeleteCard}
+                    onUsersChange={handleUsersChange}
+                    onSaveAchievements={handleSaveAchievements}
+                    onSiteSettingsChange={handleSiteSettingsChange}
+                    onSaveMonType={handleSaveMonType}
+                    onDeleteMonType={handleDeleteMonType}
+                    onDeleteUserMon={handleDeleteMon}
+                    activeView={adminView}
+                    onNavigate={setAdminView}
+                    initialCardToEdit={cardToEdit} 
+                    onEditDone={() => setCardToEdit(null)}
+                />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
       case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
-      case 'mons': return <MonPage user={user} />;
+      case 'mons': 
+                return <MonPage user={user} />;
       case 'quests': return <QuestPage user={user} />;
       case 'rewards': return <RewardPage user={user} />;
                 case 'card_select': 
@@ -326,7 +336,13 @@ export default function App() {
           {!user.isGuest && (<Tooltip text="My Journal"><button onClick={() => setView('journal')} className={`p-2 rounded-full ${view === 'journal' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><BookOpen size={20} /></button></Tooltip>)}
           {!user.isGuest && (<Tooltip text="My Profile"><button onClick={() => setView('profile')} className={`p-2 rounded-full ${view === 'profile' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><UserIcon size={20} /></button></Tooltip>)}
           {user.isAdmin && (<Tooltip text="Admin Panel"><button onClick={() => setView('admin')} className={`p-2 rounded-full ${view === 'admin' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Database size={20} /></button></Tooltip>)}
-          {!user.isGuest && (<Tooltip text="My Mons"><button onClick={() => setView('mons')} className={`p-2 rounded-full ${view === 'mons' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Bone size={20} /></button></Tooltip>)}
+                 {!user.isGuest && (
+                            <Tooltip text="My Mons">
+                                <button onClick={() => setView('mons')} className={`p-2 rounded-full ${view === 'mons' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                    <Bone size={20} />
+                                </button>
+                            </Tooltip>
+                        )}
           {!user.isGuest && (<Tooltip text="Quests"><button onClick={() => setView('quests')} className={`p-2 rounded-full ${view === 'quests' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><ClipboardList size={20} /></button></Tooltip>)}
           {!user.isGuest && (<Tooltip text="Rewards"><button onClick={() => setView('rewards')} className={`p-2 rounded-full ${view === 'rewards' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Gift size={20} /></button></Tooltip>)}
           <Tooltip text={settings.showKeyboard ? 'Hide Keyboard' : 'Show Keyboard'}><button onClick={() => setSettings(s => ({...s, showKeyboard: !s.showKeyboard}))} className={`p-2 rounded-full ${settings.showKeyboard ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 dark:bg-gray-700'}`}><Keyboard size={20} /></button></Tooltip>

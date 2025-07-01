@@ -460,7 +460,7 @@ app.put('/api/users/:id/settings', async (req, res) => {
     }
 });
 
-// MONS
+// USER'S MONS
 app.get('/api/users/:id/mons', async (req, res) => {
     const { id } = req.params;
     try {
@@ -470,10 +470,43 @@ app.get('/api/users/:id/mons', async (req, res) => {
         );
         res.json(result.rows);
     } catch (err) {
-        console.error(err);
+        console.error("Error in GET /api/users/:id/mons:", err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
+// ADMIN: GET ALL MONS and DELETE MON
+app.get('/api/mons', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                m.id, m.level, m.experience, 
+                u.name as user_name, 
+                mt.name as mon_name, mt.image_url
+            FROM mons m
+            JOIN users u ON m.user_id = u.id
+            JOIN mon_types mt ON m.mon_type_id = mt.id
+            ORDER BY m.id ASC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Error in GET /api/mons:", err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/mons/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM mons WHERE id = $1', [id]);
+        res.status(204).send();
+    } catch (err) {
+        console.error("Error in DELETE /api/mons/:id:", err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 // MON TYPES
 app.get('/api/mon-types', async (req, res) => {
@@ -487,17 +520,36 @@ app.get('/api/mon-types', async (req, res) => {
 });
 
 app.post('/api/mon-types', async (req, res) => {
-    const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = req.body;
+    const monTypesToSave = Array.isArray(req.body) ? req.body : [req.body];
+    const client = await pool.connect();
     try {
-        // FIX: The query now correctly handles potentially null values from the form.
-        const result = await pool.query(
-            'INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null]
-        );
-        res.status(201).json(result.rows[0]);
+        await client.query('BEGIN');
+
+        const savedMonTypes = await Promise.all(monTypesToSave.map(monType => {
+            const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = monType;
+            if (monType.id) {
+                // This is an update
+                return client.query(
+                    'UPDATE mon_types SET name = $1, image_url = $2, evolution_stage = $3, evolves_at_level = $4, next_evolution_id = $5 WHERE id = $6 RETURNING *',
+                    [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null, monType.id]
+                );
+            } else {
+                // This is an insert
+                return client.query(
+                    'INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                    [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null]
+                );
+            }
+        }));
+
+        await client.query('COMMIT');
+        res.status(201).json(savedMonTypes.map(r => r.rows[0]));
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("Error in POST /api/mon-types:", err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
 });
 
@@ -505,7 +557,6 @@ app.put('/api/mon-types/:id', async (req, res) => {
     const { id } = req.params;
     const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = req.body;
     try {
-        // FIX: The query now correctly handles potentially null values from the form.
         const result = await pool.query(
             'UPDATE mon_types SET name = $1, image_url = $2, evolution_stage = $3, evolves_at_level = $4, next_evolution_id = $5 WHERE id = $6 RETURNING *',
             [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null, id]

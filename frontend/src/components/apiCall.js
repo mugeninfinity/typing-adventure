@@ -102,6 +102,12 @@ export const saveUserSettings = async (userId, settings) => {
     }));
 };
 
+// ADMIN: Mon Management
+export const getAllMons = async () => handleResponse(await fetch('/api/mons'));
+export const deleteMon = async (id) => handleResponse(await fetch(`/api/mons/${id}`, { method: 'DELETE' }));
+
+export const getUserMons = async (userId) => handleResponse(await fetch(`/api/users/${userId}/mons`));
+
 // Mon Types
 export const getMonTypes = async () => handleResponse(await fetch('/api/mon-types'));
 export const saveMonType = async (monType) => {

@@ -4,17 +4,13 @@ import { Upload, Trash2, Edit, Download, Award } from 'lucide-react';
 import { Modal } from './HelperComponents';
 import MediaInput from './MediaInput';
 
+// FIX: This component now expects `onSave` as a prop, not `onAchievementsChange`.
 export default function AchievementManager({ achievements, onSave }) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentAchievement, setCurrentAchievement] = useState(null);
     const [confirmingDelete, setConfirmingDelete] = useState(null);
-
-const AchievementManager = ({ achievements, onAchievementsChange }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentAchievement, setCurrentAchievement] = useState(null);
-    const [confirmingDelete, setConfirmingDelete] = useState(null);
     const importFileRef = useRef(null);
-    
+
     const handleNew = () => {
         setCurrentAchievement({ id: `custom_${Date.now()}`, title: '', description: '', icon: '??', icon_type: 'emoji', type: 'wpm', value: 100 });
         setIsEditing(true);
@@ -32,7 +28,8 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
     const confirmDelete = () => {
         if(confirmingDelete) {
             const updatedAchievements = achievements.filter(a => a.id !== confirmingDelete.id);
-            onSave(updatedAchievements); // Call the onSave prop
+            // FIX: Call the `onSave` prop with the updated array.
+            onSave(updatedAchievements);
             setConfirmingDelete(null);
         }
     };
@@ -43,10 +40,12 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
             ? achievements.map(a => a.id === currentAchievement.id ? currentAchievement : a)
             : [...achievements, currentAchievement];
         
-        onSave(updated); // Call the onSave prop
+        // FIX: Call the `onSave` prop with the updated array.
+        onSave(updated);
         setIsEditing(false);
         setCurrentAchievement(null);
     };
+
 
     const handleExport = () => {
         const headers = Object.keys(achievements[0] || {});
@@ -89,7 +88,8 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
                     }, {});
                     return achievement;
                 });
-                onAchievementsChange([...achievements, ...importedAchievements]);
+                // FIX: Call the `onSave` prop with the new, combined array.
+                onSave([...achievements, ...importedAchievements]);
                 alert(`${importedAchievements.length} achievements imported successfully!`);
             } catch (error) {
                 alert("Failed to import CSV. Please check the file format.");
@@ -102,7 +102,7 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
 
     const achievementTypes = ['wpm', 'accuracy', 'total_cards_completed', 'total_words_typed', 'total_chars_typed', 'total_cards_day', 'total_cards_week', 'total_cards_month', 'journal_entries', 'journal_words', 'journal_chars', 'journal_entry_words', 'journal_entry_chars'];
 
-    if(isEditing) {
+     if(isEditing) {
         return (
             <div className="p-8 max-w-2xl mx-auto">
                 <h3 className="text-2xl font-bold mb-6 text-yellow-400">{currentAchievement.id.startsWith('custom') ? 'Create' : 'Edit'} Achievement</h3>
@@ -124,7 +124,7 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
                     {currentAchievement.icon_type === 'url' && (
                          <input type="text" placeholder="Image URL" value={currentAchievement.icon} onChange={e => setCurrentAchievement({...currentAchievement, icon: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
                     )}
-                    {currentAchievement.icon_type === 'emoji' && (
+                     {currentAchievement.icon_type === 'emoji' && (
                          <input type="text" placeholder="Icon (Emoji)" value={currentAchievement.icon} onChange={e => setCurrentAchievement({...currentAchievement, icon: e.target.value})} className="w-full p-2 bg-gray-700 text-white rounded-md" required />
                     )}
                     
@@ -176,7 +176,5 @@ const AchievementManager = ({ achievements, onAchievementsChange }) => {
             {confirmingDelete && <Modal onClose={() => setConfirmingDelete(null)}><div className="text-center"><h3 className="text-2xl text-white mb-4">Are you sure?</h3><p className="text-gray-300 mb-6">Do you really want to delete the achievement "{confirmingDelete.title}"?</p><div className="flex justify-center gap-4"><button onClick={() => setConfirmingDelete(null)} className="px-6 py-2 bg-gray-600 rounded-md">Cancel</button><button onClick={confirmDelete} className="px-6 py-2 bg-red-600 text-white rounded-md">Delete</button></div></div></Modal>}
         </div>
     );
-}
 };
 // END COPYING HERE
-// export default AchievementManager;
