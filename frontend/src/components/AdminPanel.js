@@ -39,8 +39,8 @@ export default function AdminPanel({
                 // Pass the correct props down to CardManager
                 return <CardManager ref={childRef} cards={cards} onSave={onSaveCard} onDelete={onDeleteCard} />;
             case 'users':
-                // Pass the correct props down to UserManager
-                return <UserManager users={users} onSave={onUsersChange} />;
+                // FIX: Pass the `cards` prop down to the UserManager
+                return <UserManager users={users} onSave={onUsersChange} allCards={cards} />;
             case 'achievements':
                 // FIX: The onAchievementsChange prop is now correctly passed to the AchievementManager
                 // We rename it to "onSave" for consistency within the child component.

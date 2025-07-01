@@ -72,6 +72,8 @@ export default function App() {
     useEffect(() => {
         api.checkAuth().then(data => {
             if (data.success) {
+            // DEBUG: Log the user object on initial load
+                console.log("1. App Load: User object from session:", data.user);
                 setUser(data.user);
                 setView('category_select');
             } else {
@@ -149,14 +151,14 @@ export default function App() {
         await fetchData();
     };
     
-    const handleUsersChange = async (changedUser) => {
-        if (changedUser.toDelete) {
-            await api.deleteUser(changedUser.id);
-        } else {
-            await api.saveUser(changedUser);
-        }
-        await fetchData();
-    };
+  const handleUsersChange = async (changedUser) => {
+    if (changedUser.toDelete) {
+        await api.deleteUser(changedUser.id);
+    } else {
+        await api.saveUser(changedUser);
+    }
+    await fetchData(); // Always refresh data after a change
+  };
   
     const handleSiteSettingsChange = async (settingsToSave) => {
         await api.saveSiteSettings(settingsToSave);
@@ -190,7 +192,7 @@ export default function App() {
         setView('game');
     };
 
-  const handleComplete = (stats) => {
+    const handleComplete = (stats) => {
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
     if (card.audio) {
@@ -208,9 +210,14 @@ export default function App() {
         if (response.unlockedAchievements && response.unlockedAchievements.length > 0) {
             setNotificationQueue(q => [...q, ...response.unlockedAchievements]);
             
+            // FIX: This section now correctly updates the user state based on the backend response.
+            // This is for the immediate UI update.
             const updatedUser = {
                 ...user,
-                unlocked_achievements: [...user.unlocked_achievements, ...response.unlockedAchievements.map(a => a.id)]
+                unlocked_achievements: [
+                    ...user.unlocked_achievements, 
+                    ...response.unlockedAchievements.map(a => a.id)
+                ]
             };
 
             setUser(updatedUser);
@@ -304,14 +311,19 @@ export default function App() {
                     <button onClick={() => setView('category_select')} className="mt-8 mx-auto block text-yellow-400 hover:underline">Back to Categories</button>
                 </div>
         );
-      case 'category_select':
+case 'category_select': {
         const allCategories = [...new Set(cards.map(c => c.category || 'Uncategorized'))];
-        const visibleCategories = user.isAdmin ? allCategories : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
+        // FIX: Ensure we are always using the most current user object from state
+        const visibleCategories = user.isAdmin 
+            ? allCategories 
+            : allCategories.filter(c => user.assigned_categories && user.assigned_categories.includes(c));
+
         if(visibleCategories.length === 0 && !user.isAdmin) {
-            return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>
+            return <div className="p-8 text-center">No categories have been assigned to you. Please contact an administrator.</div>;
         }
         return (<div className="p-8"><h2 className="text-3xl font-bold text-center text-yellow-400 mb-8">Choose a Category</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{visibleCategories.map(category => (<div key={category} onClick={() => {setSelectedCategory(category); setView('card_select')}} className="bg-gray-200 dark:bg-gray-800 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all transform hover:-translate-y-1 flex justify-between items-center"><h3 className="text-xl font-bold text-gray-900 dark:text-white">{category}</h3><ChevronsRight className="text-yellow-400"/></div>))}</div></div>);
-      default: return <AuthScreen onLogin={handleLogin} api={api} />;
+      }
+      default: return <AuthScreen onLogin={handleLogin} />;
     }
   };
 

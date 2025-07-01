@@ -206,7 +206,7 @@ VALUES
         'wpm_50',
         'Speedy Fingers',
         'Reach 50 WPM on any card.',
-        '??',
+        '🚀',
         'emoji',
         'wpm',
         50

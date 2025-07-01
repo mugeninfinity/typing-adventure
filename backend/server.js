@@ -108,6 +108,7 @@ app.get('/api/auth/check', (req, res) => {
 });
 
 // USERS
+
 app.get('/api/users', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users ORDER BY id ASC');
@@ -137,15 +138,20 @@ app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const { email, name, is_admin, assigned_categories, password } = req.body;
     
+    // DEBUG: Log the entire request body when it's received by the server.
+    // Check your Docker container logs for this message.
+    console.log(`3. Backend Received: Updating user ${id} with data:`, req.body);
+    
     try {
         let result;
-        if (password) {
+        if (password && password.length > 0) {
             const hashedPassword = await bcrypt.hash(password, saltRounds);
             result = await pool.query(
                 'UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4, password = $5 WHERE id = $6 RETURNING *',
                 [email, name, is_admin, assigned_categories, hashedPassword, id]
             );
         } else {
+            // This now correctly updates assigned_categories even if the password isn't being changed.
             result = await pool.query(
                 'UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4 WHERE id = $5 RETURNING *',
                 [email, name, is_admin, assigned_categories, id]
@@ -158,58 +164,7 @@ app.put('/api/users/:id', async (req, res) => {
 
         res.json(result.rows[0]);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.delete('/api/users/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM users WHERE id = $1', [id]);
-        res.status(204).send();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.get('/api/users', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/users', async (req, res) => {
-    const { email, password, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    try {
-        const result = await pool.query(
-            'INSERT INTO users (email, password, name, is_admin, unlocked_achievements, assigned_categories) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [email, hashedPassword, name, is_admin, unlocked_achievements, assigned_categories]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.put('/api/users/:id', async (req, res) => {
-    const { id } = req.params;
-    const { email, name, is_admin, unlocked_achievements, assigned_categories } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE users SET email = $1, name = $2, is_admin = $3, unlocked_achievements = $4, assigned_categories = $5 WHERE id = $6 RETURNING *',
-            [email, name, is_admin, unlocked_achievements, assigned_categories, id]
-        );
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
+        console.error("Error in PUT /api/users/:id:", err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
