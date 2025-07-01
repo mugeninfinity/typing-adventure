@@ -252,24 +252,24 @@ export default function App() {
         switch(view) {
             case 'admin': 
                 return <AdminPanel 
-                    cards={cards} 
-                    users={allUsers}
-                    achievements={achievements}
-                    siteSettings={siteSettings}
-                    monTypes={monTypes}
-                    allMons={allMons}
-                    onSaveCard={handleSaveCard}
-                    onDeleteCard={handleDeleteCard}
-                    onUsersChange={handleUsersChange}
-                    onSaveAchievements={handleSaveAchievements}
-                    onSiteSettingsChange={handleSiteSettingsChange}
-                    onSaveMonType={handleSaveMonType}
-                    onDeleteMonType={handleDeleteMonType}
-                    onDeleteUserMon={handleDeleteMon}
-                    activeView={adminView}
-                    onNavigate={setAdminView}
-                    initialCardToEdit={cardToEdit} 
-                    onEditDone={() => setCardToEdit(null)}
+                cards={cards} 
+                users={allUsers}
+                achievements={achievements}
+                siteSettings={siteSettings}
+                monTypes={monTypes}
+                allMons={allMons}
+                onSaveCard={handleSaveCard}
+                onDeleteCard={handleDeleteCard}
+                onUsersChange={handleUsersChange}
+                onSaveAchievements={handleSaveAchievements}
+                onSiteSettingsChange={handleSiteSettingsChange}
+                onSaveMonType={handleSaveMonType}
+                onDeleteMonType={handleDeleteMonType}
+                onDeleteUserMon={handleDeleteMon}
+                activeView={adminView}
+                onNavigate={setAdminView}
+                initialCardToEdit={cardToEdit} 
+                onEditDone={() => setCardToEdit(null)}
                 />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;

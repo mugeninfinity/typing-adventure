@@ -514,42 +514,24 @@ app.get('/api/mon-types', async (req, res) => {
         const result = await pool.query('SELECT * FROM mon_types ORDER BY id ASC');
         res.json(result.rows);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error in GET /api/mon-types:", err);
+        // FIX: Send a more detailed error during development
+        res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
 
 app.post('/api/mon-types', async (req, res) => {
-    const monTypesToSave = Array.isArray(req.body) ? req.body : [req.body];
-    const client = await pool.connect();
+    const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = req.body;
     try {
-        await client.query('BEGIN');
-
-        const savedMonTypes = await Promise.all(monTypesToSave.map(monType => {
-            const { name, image_url, evolution_stage, evolves_at_level, next_evolution_id } = monType;
-            if (monType.id) {
-                // This is an update
-                return client.query(
-                    'UPDATE mon_types SET name = $1, image_url = $2, evolution_stage = $3, evolves_at_level = $4, next_evolution_id = $5 WHERE id = $6 RETURNING *',
-                    [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null, monType.id]
-                );
-            } else {
-                // This is an insert
-                return client.query(
-                    'INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                    [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null]
-                );
-            }
-        }));
-
-        await client.query('COMMIT');
-        res.status(201).json(savedMonTypes.map(r => r.rows[0]));
+        const result = await pool.query(
+            'INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, image_url, evolution_stage, evolves_at_level || null, next_evolution_id || null]
+        );
+        res.status(201).json(result.rows[0]);
     } catch (err) {
-        await client.query('ROLLBACK');
         console.error("Error in POST /api/mon-types:", err);
-        res.status(500).json({ error: 'Internal server error' });
-    } finally {
-        client.release();
+        // FIX: Send a more detailed error during development
+        res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
 
@@ -564,7 +546,8 @@ app.put('/api/mon-types/:id', async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error("Error in PUT /api/mon-types/:id:", err);
-        res.status(500).json({ error: 'Internal server error' });
+        // FIX: Send a more detailed error during development
+        res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
 
@@ -574,11 +557,11 @@ app.delete('/api/mon-types/:id', async (req, res) => {
         await pool.query('DELETE FROM mon_types WHERE id = $1', [id]);
         res.status(204).send();
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error in DELETE /api/mon-types/:id:", err);
+        // FIX: Send a more detailed error during development
+        res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
-
 
 // QUESTS
 app.get('/api/quests', async (req, res) => {

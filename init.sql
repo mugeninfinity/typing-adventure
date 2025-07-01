@@ -1,4 +1,4 @@
--- Users Table (Updated)
+-- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -74,10 +74,11 @@ CREATE TABLE IF NOT EXISTS mon_types (
     name VARCHAR(255) NOT NULL,
     image_url VARCHAR(255),
     evolution_stage VARCHAR(50) NOT NULL,
-    evolves_at_level INTEGER
+    evolves_at_level INTEGER,
+    next_evolution_id INTEGER REFERENCES mon_types(id) ON DELETE SET NULL
 );
 
--- Mons Table
+-- Mons Table (owned by users)
 CREATE TABLE IF NOT EXISTS mons (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -173,7 +174,7 @@ VALUES
     (
         'Science',
         'A Journey to the Sun',
-        'The Sun is a star at the center of the Solar System. It is a nearly perfect sphere of hot plasma. It is the most important source of energy for life on Earth!',
+        'sun',
         'https://placehold.co/600x450/f97316/white?text=The+Sun',
         null,
         'https://cdn.pixabay.com/audio/2022/08/04/audio_2bbe64992d.mp3',
@@ -264,3 +265,15 @@ VALUES
         'https://www.soundjay.com/button/sounds/button-16.mp3',
         'https://www.soundjay.com/button/sounds/button-10.mp3'
     );
+-- FIX: We no longer specify the IDs when seeding Mon Types. PostgreSQL will generate them.
+INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES
+('Bulbasaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png', 'first', 16, 2),
+('Ivysaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/2.png', 'second', 32, 3),
+('Venusaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png', 'final', null, null),
+('Charmander', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png', 'first', 16, 5),
+('Charmeleon', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/5.png', 'second', 36, 6),
+('Charizard', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png', 'final', null, null);
+
+-- FIX: We let the database assign the ID for the pre-assigned mon.
+INSERT INTO mons (user_id, mon_type_id, level, experience) VALUES
+(1, 4, 5, 120);
