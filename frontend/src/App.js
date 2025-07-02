@@ -192,7 +192,9 @@ export default function App() {
         setView('game');
     };
 
-    const handleComplete = (stats) => {
+const handleComplete = (stats) => {
+    console.log("1. Typing complete. Calling handleComplete in App.js.");
+
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
     if (card.audio) {
@@ -206,27 +208,25 @@ export default function App() {
         ...stats,
     };
     
+  console.log("2. App.js: Calling api.saveHistory.");
     api.saveHistory(newHistoryRecord).then((response) => {
+        console.log("3. App.js: Got response from saveHistory.");
         if (response.unlockedAchievements && response.unlockedAchievements.length > 0) {
+            console.log("4. App.js: New achievements unlocked! Updating user state.");
             setNotificationQueue(q => [...q, ...response.unlockedAchievements]);
             
-            // FIX: This section now correctly updates the user state based on the backend response.
-            // This is for the immediate UI update.
             const updatedUser = {
                 ...user,
-                unlocked_achievements: [
-                    ...user.unlocked_achievements, 
-                    ...response.unlockedAchievements.map(a => a.id)
-                ]
+                unlocked_achievements: [...user.unlocked_achievements, ...response.unlockedAchievements.map(a => a.id)]
             };
 
-            setUser(updatedUser);
+           // setUser(updatedUser); // This is the line causing the re-render loop
         }
         
-        fetchData();
+        console.log("5. App.js: Fetching updated history.");
+        api.getHistory(user.id).then(setTypingHistory);
     });
   };
-  
 
   
   const renderGameView = () => {
