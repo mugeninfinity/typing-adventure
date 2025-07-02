@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS mon_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     image_url VARCHAR(255),
+    bio TEXT,
     evolution_stage VARCHAR(50) NOT NULL,
     evolves_at_level INTEGER,
     next_evolution_id INTEGER REFERENCES mon_types(id) ON DELETE SET NULL
@@ -215,7 +216,7 @@ VALUES
         'acc_98',
         'Perfectionist',
         'Get 98% accuracy or higher.',
-        '??',
+        '🎯',
         'emoji',
         'accuracy',
         98
@@ -224,7 +225,7 @@ VALUES
         'cards_10',
         'Dedicated Typist',
         'Complete 10 typing cards.',
-        '??',
+        '💪',
         'emoji',
         'total_cards_completed',
         10
@@ -233,7 +234,7 @@ VALUES
         'first_card',
         'Getting Started',
         'Complete your first card.',
-        '??',
+        '🎉',
         'emoji',
         'total_cards_completed',
         1
@@ -242,7 +243,7 @@ VALUES
         'journal_1',
         'First Entry',
         'Write your first journal entry.',
-        '??',
+        '🙌',
         'emoji',
         'journal_entries',
         1
@@ -251,7 +252,7 @@ VALUES
         'journal_words_100',
         'Budding Author',
         'Write 100 words in your journal.',
-        '??',
+        '📚',
         'emoji',
         'journal_words',
         100
@@ -266,14 +267,16 @@ VALUES
         'https://www.soundjay.com/button/sounds/button-10.mp3'
     );
 -- FIX: We no longer specify the IDs when seeding Mon Types. PostgreSQL will generate them.
-INSERT INTO mon_types (name, image_url, evolution_stage, evolves_at_level, next_evolution_id) VALUES
-('Bulbasaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png', 'first', 16, 2),
-('Ivysaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/2.png', 'second', 32, 3),
-('Venusaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png', 'final', null, null),
-('Charmander', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png', 'first', 16, 5),
-('Charmeleon', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/5.png', 'second', 36, 6),
-('Charizard', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png', 'final', null, null);
+-- START COPYING HERE
+INSERT INTO mon_types (name, image_url, bio, evolution_stage, evolves_at_level, next_evolution_id) VALUES
+('Bulbasaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png', 'There is a plant seed on its back right from the day this Pokémon is born. The seed slowly grows larger.', 'first', 16, 2),
+('Ivysaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/2.png', 'When the bulb on its back grows large, it appears to lose the ability to stand on its hind legs.', 'second', 32, 3),
+('Venusaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png', 'The plant blooms when it is absorbing solar energy. It stays on the move to seek sunlight.', 'final', null, null),
+('Charmander', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png', 'It has a preference for hot things. When it rains, steam is said to spout from the tip of its tail.', 'first', 16, 5),
+('Charmeleon', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/5.png', 'It has a barbaric nature. In battle, it whips its fiery tail around and slashes away with sharp claws.', 'second', 36, 6),
+('Charizard', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png', 'It spits fire that is hot enough to melt boulders. It may cause forest fires by blowing flames.', 'final', null, null);
 
 -- FIX: We let the database assign the ID for the pre-assigned mon.
 INSERT INTO mons (user_id, mon_type_id, level, experience) VALUES
-(1, 4, 5, 120);
+(1, 4, 1, 10);
+

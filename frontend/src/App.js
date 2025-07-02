@@ -222,6 +222,7 @@ export default function App() {
 
             setUser(updatedUser);
         }
+        
         fetchData();
     });
   };
@@ -280,7 +281,29 @@ export default function App() {
                 />;
       case 'game': return renderGameView();
       case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
-      case 'journal': return <JournalPage user={user} journal={journalData} onJournalChange={(updatedEntry) => { api.saveJournalEntry(updatedEntry).then(() => api.getJournal(user.id).then(setJournalData)) }} onDeleteEntry={(entryId) => { api.deleteJournalEntry(entryId).then(() => api.getJournal(user.id).then(setJournalData)); }} />;
+      case 'journal': 
+    return <JournalPage 
+        user={user} 
+        journal={journalData} 
+        onJournalChange={async (updatedEntry) => {
+            // FIX: This handler now checks the response for new achievements
+            const response = await api.saveJournalEntry(updatedEntry);
+            if (response.unlockedAchievements && response.unlockedAchievements.length > 0) {
+                setNotificationQueue(q => [...q, ...response.unlockedAchievements]);
+                const updatedUser = {
+                    ...user,
+                    unlocked_achievements: [...user.unlocked_achievements, ...response.unlockedAchievements.map(a => a.id)]
+                };
+                setUser(updatedUser);
+            }
+            // Always refresh the journal data after a save
+            api.getJournal(user.id).then(setJournalData);
+        }} 
+        onDeleteEntry={async (entryId) => {
+            await api.deleteJournalEntry(entryId);
+            api.getJournal(user.id).then(setJournalData);
+        }} 
+    />;
       case 'mons': 
                 return <MonPage user={user} />;
       case 'quests': return <QuestPage user={user} />;

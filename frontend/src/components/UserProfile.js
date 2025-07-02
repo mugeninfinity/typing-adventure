@@ -1,3 +1,4 @@
+// START COPYING HERE
 import React from 'react';
 import Badges from './Badges';
 import TypingStats from './TypingStats';
@@ -5,10 +6,39 @@ import MonPage from './MonPage';
 
 export default function UserProfile({ user, history, achievements, journal }) {
     
+    // FIX: The userHistory and userJournal are now directly the props,
+    // as App.js already provides the correct, filtered data.
+    const userHistory = history || [];
+    const userJournal = journal || [];
+
     const getProgress = (achievement) => {
-        // This function will need to be updated to use the new dynamic achievement system
-        // For now, it will return dummy data.
-        return { text: 'N/A', percent: 0 };
+        const now = Date.now();
+        const day = 24 * 60 * 60 * 1000;
+        const historyInTime = (duration) => userHistory.filter(h => now - new Date(h.timestamp).getTime() < duration);
+        
+        const totalCardsCompleted = userHistory.length;
+        const totalWordsTyped = userHistory.reduce((sum, h) => sum + h.word_count, 0);
+        const totalCharsTyped = userHistory.reduce((sum, h) => sum + h.char_count, 0);
+        const journalEntries = userJournal.length;
+        const journalWords = userJournal.reduce((sum, entry) => sum + (entry.word_count || 0), 0);
+        const journalChars = userJournal.reduce((sum, entry) => sum + (entry.char_count || 0), 0);
+
+        let current = 0;
+        switch(achievement.type) {
+            case 'total_cards_completed': current = totalCardsCompleted; break;
+            case 'total_words_typed': current = totalWordsTyped; break;
+            case 'total_chars_typed': current = totalCharsTyped; break;
+            case 'total_cards_day': current = historyInTime(day).length; break;
+            case 'total_cards_week': current = historyInTime(7 * day).length; break;
+            case 'total_cards_month': current = historyInTime(30 * day).length; break;
+            case 'journal_entries': current = journalEntries; break;
+            case 'journal_words': current = journalWords; break;
+            case 'journal_chars': current = journalChars; break;
+            case 'journal_entry_words': current = Math.max(0, ...userJournal.map(entry => entry.word_count || 0)); break;
+            case 'journal_entry_chars': current = Math.max(0, ...userJournal.map(entry => entry.char_count || 0)); break;
+            default: return { text: 'N/A', percent: 0};
+        }
+        return { text: `${current} / ${achievement.value}`, percent: (current / achievement.value) * 100 };
     };
 
     return (
@@ -22,9 +52,10 @@ export default function UserProfile({ user, history, achievements, journal }) {
                     </div>
                 </div>
                 <div>
-                    <TypingStats history={history} journal={journal} />
+                    <TypingStats history={userHistory} journal={userJournal} />
                 </div>
             </div>
         </div>
     );
 }
+// END COPYING HERE

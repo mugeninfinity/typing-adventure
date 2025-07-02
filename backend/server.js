@@ -73,8 +73,8 @@ app.post('/api/auth/login', async (req, res) => {
                 email: dbUser.email,
                 name: dbUser.name,
                 isAdmin: dbUser.is_admin,
-                unlockedAchievements: dbUser.unlocked_achievements,
-                assignedCategories: dbUser.assigned_categories,
+                unlocked_achievements: dbUser.unlocked_achievements,
+                assigned_categories: dbUser.assigned_categories,
                 settings: dbUser.settings,
             };
             
@@ -238,7 +238,7 @@ app.delete('/api/cards/:id', async (req, res) => {
 });
 
 
-// TYPING HISTORY
+// TYPING HISTORY & GAME LOGIC
 app.get('/api/history/:userId', async (req, res) => {
     // FIX: Changed "id" to "userId" to match the route parameter
     const { userId } = req.params;
@@ -257,6 +257,7 @@ app.post('/api/history', async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
 
         const historyResult = await client.query(
             'INSERT INTO typing_history (user_id, card_id, wpm, accuracy, time_elapsed, incorrect_letters, word_count, char_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
@@ -329,35 +330,60 @@ app.get('/api/journal/:userId', async (req, res) => {
 });
 
 app.post('/api/journal', async (req, res) => {
-    // FIX: Changed "userId" to "user_id" to match the frontend
     const { user_id, content, wordCount, charCount } = req.body;
+    const client = await pool.connect();
     try {
-        const result = await pool.query(
+        await client.query('BEGIN');
+        const result = await client.query(
             'INSERT INTO journal (user_id, content, word_count, char_count) VALUES ($1, $2, $3, $4) RETURNING *',
-            // FIX: Pass the correct variable to the query
             [user_id, content, wordCount, charCount]
         );
-        res.status(201).json(result.rows[0]);
+        
+        // FIX: Check for achievements after saving a new journal entry
+        const newlyUnlocked = await checkAndAwardAchievements(client, user_id, {});
+        
+        await client.query('COMMIT');
+        res.status(201).json({ 
+            entry: result.rows[0],
+            unlockedAchievements: newlyUnlocked 
+        });
     } catch (err) {
-        console.error(err);
+        await client.query('ROLLBACK');
+        console.error("Error in POST /api/journal:", err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
 });
 
 app.put('/api/journal/:id', async (req, res) => {
     const { id } = req.params;
-    const { content, wordCount, charCount } = req.body;
+    const { content, wordCount, charCount, user_id } = req.body;
+    const client = await pool.connect();
     try {
-        const result = await pool.query(
+        await client.query('BEGIN');
+        const result = await client.query(
             'UPDATE journal SET content = $1, word_count = $2, char_count = $3 WHERE id = $4 RETURNING *',
             [content, wordCount, charCount, id]
         );
-        res.json(result.rows[0]);
+
+        // FIX: Check for achievements after updating a journal entry
+        const newlyUnlocked = await checkAndAwardAchievements(client, user_id, {});
+
+        await client.query('COMMIT');
+        res.json({ 
+            entry: result.rows[0],
+            unlockedAchievements: newlyUnlocked 
+        });
     } catch (err) {
-        console.error(err);
+        await client.query('ROLLBACK');
+        console.error("Error in PUT /api/journal/:id:", err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
-});
+}
+);
 
 app.delete('/api/journal/:id', async (req, res) => {
     const { id } = req.params;
