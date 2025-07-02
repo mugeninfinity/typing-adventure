@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import MediaInput from './MediaInput';
 
-export default function SiteSettingsManager({ settings, onSiteSettingsChange }) {
+export default function SiteSettingsManager({ settings, onSave }) {
     const [currentSettings, setCurrentSettings] = useState(settings);
 
     useEffect(() => {
@@ -11,7 +11,7 @@ export default function SiteSettingsManager({ settings, onSiteSettingsChange }) 
 
     const handleSave = (e) => {
         e.preventDefault();
-        onSiteSettingsChange(currentSettings);
+        onSave(currentSettings);
         alert("Settings saved!");
     };
 

@@ -96,7 +96,7 @@ export default function TypingTest({ card, onComplete, onSkip, onDirectEdit, set
 
   useEffect(() => { 
       // DEBUG: This log will show us every time the component resets for a new card.
-      console.log("TypingTest.js is re-rendering for a new card:", card.title);
+      //console.log("TypingTest.js is re-rendering for a new card:", card.title);
 
       setInputValue(''); setStartTime(null); setWpm(0); setIsFinished(false); setFinalStats(null); incorrectLetters.current = []; setProgress(0); 
       const timer = setTimeout(() => {
@@ -107,7 +107,29 @@ export default function TypingTest({ card, onComplete, onSkip, onDirectEdit, set
       return () => clearTimeout(timer);
   }, [card.id]);
 
-  useEffect(() => { if(startTime && !isFinished) { const interval = setInterval(() => { const elapsedSeconds = (Date.now() - startTime) / 1000; const typedWords = inputValue.length / 5; const currentWpm = Math.round((typedWords / elapsedSeconds) * 60) || 0; setWpm(currentWpm); }, 1000); return () => clearInterval(interval); } }, [startTime, isFinished, inputValue]);
+  useEffect(() => { if(startTime && !isFinished) { const interval = setInterval(() => { const elapsedSeconds = (Date.now() - startTime) / 1000; const typedWords = inputValue.length / 5; const currentWpm = Math.round((typedWords / elapsedSeconds) * 60) || 0; setWpm(currentWpm); }, 1000); return () => clearInterval(interval); } }, 
+  [startTime, isFinished, inputValue]);
+    // FIX: This new useEffect hook adds the "Enter to continue" functionality.
+  useEffect(() => {
+    const handleEnter = (event) => {
+      if (event.key === 'Enter' && isFinished) {
+        // Prevent the default Enter behavior (like submitting a form)
+        event.preventDefault();
+        // Call the onSkip function passed down from App.js
+        onSkip();
+      }
+    };
+
+    // Add the event listener when the component mounts
+    window.addEventListener('keydown', handleEnter);
+
+    // This is the cleanup function. It's crucial.
+    // It removes the event listener when the component unmounts or re-renders.
+    return () => {
+      window.removeEventListener('keydown', handleEnter);
+    };
+  }, [isFinished, onSkip]); // The effect depends on these values
+  
   const playSound = (soundRef) => { if(settings.soundEnabled && soundRef.current) { soundRef.current.currentTime = 0; soundRef.current.play().catch(e => {}); }};
   
   const handleInputChange = (e) => {
