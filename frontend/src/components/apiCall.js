@@ -64,6 +64,18 @@ export const saveUser = async (user) => {
 };
 export const deleteUser = async (id) => handleResponse(await fetch(`/api/users/${id}`, { method: 'DELETE' }));
 
+// FIND THE `deleteUser` FUNCTION AND ADD THIS NEW FUNCTION AFTER IT
+
+// START COPYING HERE
+export const updateUserAvatar = async (userId, avatar_url) => {
+    return handleResponse(await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        // We only send the specific field we want to change
+        body: JSON.stringify({ avatar_url: avatar_url }),
+    }));
+};
+
 export const getHistory = async (userId) => handleResponse(await fetch(`/api/history/${userId}`));
 export const saveHistory = async (history) => {
     return handleResponse(await fetch('/api/history', {

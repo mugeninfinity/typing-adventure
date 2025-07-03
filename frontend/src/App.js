@@ -14,6 +14,7 @@ import QuestPage from './components/QuestPage';
 import RewardPage from './components/RewardPage';
 import { Database, Shield, Sun, Moon, Volume2, VolumeX, Edit, LogIn, UserPlus, User as UserIcon, Keyboard, ChevronsRight, Award, Users, Settings as SettingsIcon, Home, BookOpen, Bone, Gift, ClipboardList } from 'lucide-react';
 
+
 export default function App() {
    const [user, setUser] = useState(null);
     const [view, setView] = useState('loading');
@@ -73,7 +74,7 @@ export default function App() {
         api.checkAuth().then(data => {
             if (data.success) {
             // DEBUG: Log the user object on initial load
-                console.log("1. App Load: User object from session:", data.user);
+           //     console.log("1. App Load: User object from session:", data.user);
                 setUser(data.user);
                 setView('category_select');
             } else {
@@ -192,8 +193,29 @@ export default function App() {
         setView('game');
     };
 
+  // FIX: This is the correct handler for updating the user's avatar.
+  const handleAvatarUpdate = async (newAvatarUrl) => {
+        // DEBUG 2: Log the state of the user object *before* the update.
+    console.log("2. App.js - handleAvatarUpdate: User state BEFORE update:", user);
+    // 1. Tell the backend to update the user's avatar in the database.
+    await api.updateUserAvatar(user.id, newAvatarUrl);
+
+    // 2. Create a new user object for the local state with the new URL.
+    const updatedUser = { ...user, avatar_url: newAvatarUrl };
+    //  console.log("Handle Avatar Update 2. :", user, newAvatarUrl);
+
+     // DEBUG 3: Log the new user object right before we update the state.
+    console.log("3. App.js - handleAvatarUpdate: Setting new user state:", updatedUser);
+
+ 
+    // 3. Update the state. This will trigger an immediate UI re-render
+    //    with the new picture, avoiding a race condition.
+    setUser(updatedUser);
+  console.log("Handle Avatar Update 3. :", updatedUser);
+  };
+
 const handleComplete = (stats) => {
-    console.log("1. Typing complete. Calling handleComplete in App.js.");
+  //  console.log("1. Typing complete. Calling handleComplete in App.js.");
 
     const categoryCards = cards.filter((c) => c.category === selectedCategory);
     const card = categoryCards[currentCardIndex];
@@ -208,11 +230,11 @@ const handleComplete = (stats) => {
         ...stats,
     };
     
-  console.log("2. App.js: Calling api.saveHistory.");
+  // console.log("2. App.js: Calling api.saveHistory.");
     api.saveHistory(newHistoryRecord).then((response) => {
-        console.log("3. App.js: Got response from saveHistory.");
+      //  console.log("3. App.js: Got response from saveHistory.");
         if (response.unlockedAchievements && response.unlockedAchievements.length > 0) {
-            console.log("4. App.js: New achievements unlocked! Updating user state.");
+        //    console.log("4. App.js: New achievements unlocked! Updating user state.");
             setNotificationQueue(q => [...q, ...response.unlockedAchievements]);
             
             const updatedUser = {
@@ -220,7 +242,7 @@ const handleComplete = (stats) => {
                 unlocked_achievements: [...user.unlocked_achievements, ...response.unlockedAchievements.map(a => a.id)]
             };
 
-           // setUser(updatedUser); // This is the line causing the re-render loop
+            setUser(updatedUser); // This is the line causing the re-render loop
         }
         
         console.log("5. App.js: Fetching updated history.");
@@ -280,7 +302,17 @@ const handleComplete = (stats) => {
                 onEditDone={() => setCardToEdit(null)}
                 />;
       case 'game': return renderGameView();
-      case 'profile': return <UserProfile user={user} history={typingHistory} achievements={achievements} journal={journalData} />;
+      case 'profile': 
+         // DEBUG 4: Log the user object right before passing it to the UserProfile.
+        console.log("4. App.js - renderView: Rendering UserProfile with user:", user);
+      
+        return <UserProfile 
+            user={user} 
+            history={typingHistory} 
+            achievements={achievements} 
+            journal={journalData} 
+            onAvatarUpdate={handleAvatarUpdate} 
+        />;
       case 'journal': 
     return <JournalPage 
         user={user} 

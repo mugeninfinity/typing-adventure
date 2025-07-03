@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS users (
     settings JSONB DEFAULT '{}',
     money INTEGER DEFAULT 0,
     trainer_level INTEGER DEFAULT 1,
-    trainer_experience INTEGER DEFAULT 0
+    trainer_experience INTEGER DEFAULT 0,
+    -- FIX: Add a column to store the user's avatar image path
+    avatar_url VARCHAR(255)
 );
 
 -- Cards Table

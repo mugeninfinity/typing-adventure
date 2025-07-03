@@ -68,6 +68,9 @@ app.post('/api/auth/login', async (req, res) => {
         const passwordMatch = await bcrypt.compare(password, dbUser.password);
 
         if (passwordMatch) {
+            // FIX: This payload now correctly maps all snake_case database columns
+            // to the camelCase properties used in the frontend. Most importantly,
+            // it now includes the avatar_url.
             const userPayload = {
                 id: dbUser.id,
                 email: dbUser.email,
@@ -75,7 +78,11 @@ app.post('/api/auth/login', async (req, res) => {
                 isAdmin: dbUser.is_admin,
                 unlocked_achievements: dbUser.unlocked_achievements,
                 assigned_categories: dbUser.assigned_categories,
+                avatar_url: dbUser.avatar_url, // This was missing
                 settings: dbUser.settings,
+                trainer_level: dbUser.trainer_level,
+                trainer_experience: dbUser.trainer_experience,
+                money: dbUser.money,
             };
             
             req.session.user = userPayload;
@@ -84,7 +91,7 @@ app.post('/api/auth/login', async (req, res) => {
             res.status(401).json({ success: false, message: 'Invalid credentials.' });
         }
     } catch (err) {
-        console.error(err);
+        console.error("Error in POST /api/auth/login:", err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -111,7 +118,7 @@ app.get('/api/auth/check', (req, res) => {
 
 app.get('/api/users', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, email, name, is_admin, unlocked_achievements, assigned_categories FROM users ORDER BY id ASC');
+        const result = await pool.query('SELECT id, email, name, is_admin, assigned_categories, avatar_url, trainer_level, trainer_experience FROM users ORDER BY id ASC');
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -120,7 +127,11 @@ app.get('/api/users', async (req, res) => {
 });
 
 app.post('/api/users', async (req, res) => {
-    const { email, password, name, is_admin, assigned_categories } = req.body;
+    const { email, password, name, is_admin } = req.body;
+    let assigned_categories = req.body.assigned_categories;
+    if (!assigned_categories || assigned_categories.length === 0) {
+        assigned_categories = ['Science']; // Default category
+    }
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     try {
         const result = await pool.query(
@@ -129,40 +140,59 @@ app.post('/api/users', async (req, res) => {
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
-        console.error(err);
+        console.error("Error in POST /api/users:", err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { email, name, is_admin, assigned_categories, password } = req.body;
-    
-    // DEBUG: Log the entire request body when it's received by the server.
-    // Check your Docker container logs for this message.
-    console.log(`3. Backend Received: Updating user ${id} with data:`, req.body);
-    
-    try {
-        let result;
-        if (password && password.length > 0) {
-            const hashedPassword = await bcrypt.hash(password, saltRounds);
-            result = await pool.query(
-                'UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4, password = $5 WHERE id = $6 RETURNING *',
-                [email, name, is_admin, assigned_categories, hashedPassword, id]
-            );
-        } else {
-            // This now correctly updates assigned_categories even if the password isn't being changed.
-            result = await pool.query(
-                'UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4 WHERE id = $5 RETURNING *',
-                [email, name, is_admin, assigned_categories, id]
-            );
-        }
+    const { email, name, is_admin, assigned_categories, password, avatar_url } = req.body;
 
-        if (result.rows.length === 0) {
+    try {
+        const { rows: [currentUser] } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+        if (!currentUser) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
+        
+        const updateFields = {
+            email: email !== undefined ? email : currentUser.email,
+            name: name !== undefined ? name : currentUser.name,
+            is_admin: is_admin !== undefined ? is_admin : currentUser.is_admin,
+            assigned_categories: assigned_categories !== undefined ? assigned_categories : currentUser.assigned_categories,
+            avatar_url: avatar_url !== undefined ? avatar_url : currentUser.avatar_url
+        };
 
-        res.json(result.rows[0]);
+        let result;
+        if (password) {
+            updateFields.password = await bcrypt.hash(password, saltRounds);
+            const query = `UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4, password = $5, avatar_url = $6 WHERE id = $7 RETURNING *`;
+            const values = [updateFields.email, updateFields.name, updateFields.is_admin, updateFields.assigned_categories, updateFields.password, updateFields.avatar_url, id];
+            result = await pool.query(query, values);
+        } else {
+            const query = `UPDATE users SET email = $1, name = $2, is_admin = $3, assigned_categories = $4, avatar_url = $5 WHERE id = $6 RETURNING *`;
+            const values = [updateFields.email, updateFields.name, updateFields.is_admin, updateFields.assigned_categories, updateFields.avatar_url, id];
+            result = await pool.query(query, values);
+        }
+
+        const dbUser = result.rows[0];
+
+        // FIX: After updating the database, we MUST also update the user object in the session.
+        const userPayload = {
+            id: dbUser.id,
+            email: dbUser.email,
+            name: dbUser.name,
+            isAdmin: dbUser.is_admin,
+            unlocked_achievements: dbUser.unlocked_achievements,
+            assigned_categories: dbUser.assigned_categories,
+            avatar_url: dbUser.avatar_url, // Make sure the new avatar URL is included
+            trainer_level: dbUser.trainer_level,
+            trainer_experience: dbUser.trainer_experience,
+            settings: dbUser.settings,
+        };
+        req.session.user = userPayload;
+
+        res.json(userPayload);
     } catch (err) {
         console.error("Error in PUT /api/users/:id:", err);
         res.status(500).json({ error: 'Internal server error' });
